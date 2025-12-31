@@ -317,7 +317,8 @@ with st.sidebar:
                         "assets": {},
                         "rebalance_logs": [],
                         "drift_tolerance": 5.0,
-                        "rebalance_stats": []
+                        "rebalance_stats": [],
+                        "last_rebalanced": None
                     }
                     save_db(st.session_state.db)
                     log_profile(st.session_state.db["profiles"][n_name], "Profile created")
@@ -519,6 +520,17 @@ with st.sidebar:
             st.markdown("### 📋 Current Assets")
             for ticker, data in prof["assets"].items():
                 st.caption(f"**{ticker}**: {data['target']}% ({data['units']:.4f} units)")
+        
+        # Activity Log in Sidebar
+        st.divider()
+        st.markdown("### 📜 Activity Log")
+        with st.expander("View Recent Activity", expanded=False):
+            logs = prof.get("rebalance_logs", [])[:20]
+            if logs:
+                for log_entry in logs:
+                    st.caption(f"**{log_entry['date']}**: {log_entry['event']}")
+            else:
+                st.caption("No activity yet")
 
 # ===== MAIN CONTENT =====
 if view_mode == "🏠 Global Dashboard":
@@ -595,8 +607,9 @@ if view_mode == "🏠 Global Dashboard":
             curr_v = float(sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets))
             total_value += curr_v
             
-            # Check drift
-            if curr_v > 0:
+            # Check drift only if profile has been rebalanced before
+            has_rebalanced = p_data.get("last_rebalanced") is not None
+            if curr_v > 0 and has_rebalanced:
                 for t in p_assets:
                     actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
                     target_pct = float(p_assets[t]["target"])
@@ -642,10 +655,13 @@ if view_mode == "🏠 Global Dashboard":
             p_assets = p_data.get("assets", {})
             curr_v = float(sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets))
             
+            # Check if profile has been rebalanced
+            has_rebalanced = p_data.get("last_rebalanced") is not None
+            
             # Check for drift
             has_drift = False
             drift_details = []
-            if curr_v > 0:
+            if curr_v > 0 and has_rebalanced:
                 for t in p_assets:
                     actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
                     target_pct = float(p_assets[t]["target"])
@@ -659,14 +675,27 @@ if view_mode == "🏠 Global Dashboard":
             roi_pct = ((curr_v / start_val) - 1) * 100 if start_val > 0 else 0
             
             p_flag = "🇺🇸" if p_data.get("currency") == "USD" else "🇨🇦"
-            tile_class = "profile-tile-warning" if has_drift else "profile-tile-optimized"
-            status_badge = '<span class="drift-badge">🚨 REBALANCE</span>' if has_drift else '<span class="success-badge">✓ Optimized</span>'
+            
+            # Determine status
+            if not has_rebalanced:
+                tile_class = "profile-tile"
+                status_badge = '<span style="background: #94a3b8; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">⚪ Not Rebalanced</span>'
+            elif has_drift:
+                tile_class = "profile-tile-warning"
+                status_badge = '<span class="drift-badge">🚨 REBALANCE</span>'
+            else:
+                tile_class = "profile-tile-optimized"
+                status_badge = '<span class="success-badge">✓ Optimized</span>'
             
             with cols[i % 2]:
+                # Clickable title button
+                if st.button(f"{p_flag} {name}", key=f"title_{name}", use_container_width=True, type="secondary"):
+                    st.session_state.active_profile = name
+                    st.rerun()
+                
                 st.markdown(f"""
-                    <div class="profile-tile {tile_class}">
+                    <div class="{tile_class}" style="margin-top: -10px;">
                         <div>
-                            <h3 style="margin: 0 0 8px 0;">{p_flag} {name}</h3>
                             {status_badge}
                         </div>
                         <div style="margin: 16px 0;">
@@ -686,10 +715,6 @@ if view_mode == "🏠 Global Dashboard":
                     with st.expander("⚠️ View Drift Details", expanded=False):
                         for detail in drift_details:
                             st.caption(f"• {detail}")
-                
-                if st.button(f"📊 Manage {name}", key=f"btn_{name}", use_container_width=True):
-                    st.session_state.active_profile = name
-                    st.rerun()
 
 else:  # Portfolio Manager
     if not st.session_state.active_profile or st.session_state.active_profile not in st.session_state.db["profiles"]:
@@ -894,6 +919,8 @@ else:  # Portfolio Manager
             
             rows = []
             total_turnover = 0
+            total_current_val = 0
+            total_target_val = 0
             
             for t in v_t:
                 p = float(data[t].iloc[-1])
@@ -911,26 +938,42 @@ else:  # Portfolio Manager
                 unit_diff = tar_u - cur_u
                 
                 total_turnover += abs(val_diff)
+                total_current_val += act_val
+                total_target_val += tar_val
                 
                 if abs(drift) < 0.1:
                     action = "—"
                 else:
                     action = "BUY" if drift < 0 else "SELL"
                 
+                # Color code drift
+                drift_color = "🔴" if drift < -0.5 else ("🟢" if drift > 0.5 else "⚪")
+                
                 rows.append({
                     "Ticker": t,
                     "Current %": f"{act_w:.2f}%",
                     "Target %": f"{tar_w:.2f}%",
-                    "Drift": f"{drift:+.2f}%",
+                    "Drift": f"{drift_color} {drift:+.2f}%",
                     "Action": action,
                     "Units Δ": f"{unit_diff:+.4f}",
                     "Value Δ": f"${val_diff:+,.2f}"
                 })
             
+            # Add total row
+            rows.append({
+                "Ticker": "**TOTAL**",
+                "Current %": "100.00%",
+                "Target %": "100.00%",
+                "Drift": "—",
+                "Action": "—",
+                "Units Δ": "—",
+                "Value Δ": f"**${total_turnover:,.2f}**"
+            })
+            
             df_rebalance = pd.DataFrame(rows)
             st.dataframe(df_rebalance, use_container_width=True, hide_index=True)
             
-            st.metric("Total Trade Volume", f"${total_turnover:,.2f}")
+            st.caption(f"📊 Total Trade Volume: **${total_turnover:,.2f}**")
             
             st.divider()
             
