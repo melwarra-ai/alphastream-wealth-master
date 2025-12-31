@@ -186,23 +186,23 @@ st.markdown("""
     .buying-guide {
         background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
         border-left: 4px solid #3b82f6;
-        padding: 20px;
-        border-radius: 12px;
-        margin: 16px 0;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 12px 0;
         font-weight: 600;
         color: #1e40af;
-        font-size: 1.05rem;
-        line-height: 1.8;
+        font-size: 0.9rem;
+        line-height: 1.5;
     }
     
     .buying-guide-highlight {
         background: #1e40af;
         color: white;
-        padding: 4px 12px;
-        border-radius: 6px;
-        font-size: 1.2rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 1rem;
         display: inline-block;
-        margin: 4px 0;
+        margin: 0 2px;
     }
     
     h1, h2, h3 {
@@ -245,6 +245,7 @@ def load_db():
                 for p in data["profiles"].values():
                     p.setdefault("drift_tolerance", 5.0)
                     p.setdefault("rebalance_stats", [])
+                    p.setdefault("last_rebalanced", None)
                 return data
             except: 
                 return base_schema
@@ -385,9 +386,17 @@ with st.sidebar:
         # Calculate current allocation
         current_alloc = sum(a.get('target', 0) for a in prof.get("assets", {}).values())
         
-        # Allocation progress bar
-        progress_color = "🟢" if current_alloc < 100 else "🔴"
-        st.progress(min(current_alloc / 100, 1.0))
+        # Allocation progress bar with color coding
+        progress_color = "🟢" if current_alloc >= 100 else "🟠"
+        bar_color = "#10b981" if current_alloc >= 100 else "#f97316"
+        
+        st.markdown(f"""
+            <div style="margin: 12px 0;">
+                <div style="background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden;">
+                    <div style="background: {bar_color}; height: 100%; width: {min(current_alloc, 100)}%; transition: all 0.3s;"></div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
         st.markdown(f"**{progress_color} Allocated: {current_alloc:.1f}% / 100%**")
         
         # Asset ticker input
@@ -470,12 +479,7 @@ with st.sidebar:
                 
                 st.markdown(f"""
                     <div class="buying-guide">
-                        💡 <strong>BUYING GUIDE</strong><br><br>
-                        To reach <strong>{a_w}%</strong> allocation of {a_sym}:<br><br>
-                        You need to buy:<br>
-                        <span class="buying-guide-highlight">{suggested_units:.4f} units</span><br><br>
-                        Total value: <strong>${target_value:,.2f}</strong><br>
-                        At current price: <strong>${last_price:,.2f}</strong> per unit
+                        💡 <strong>Buy Guide:</strong> To reach {a_w}% → Buy <span class="buying-guide-highlight">{suggested_units:.4f} units</span> (${target_value:,.0f} @ ${last_price:,.2f}/unit)
                     </div>
                 """, unsafe_allow_html=True)
             
@@ -525,10 +529,13 @@ with st.sidebar:
         st.divider()
         st.markdown("### 📜 Activity Log")
         with st.expander("View Recent Activity", expanded=False):
-            logs = prof.get("rebalance_logs", [])[:20]
-            if logs:
-                for log_entry in logs:
+            all_logs = prof.get("rebalance_logs", [])
+            logs_to_show = all_logs[:20]
+            if logs_to_show:
+                for log_entry in logs_to_show:
                     st.caption(f"**{log_entry['date']}**: {log_entry['event']}")
+                if len(all_logs) > 20:
+                    st.caption(f"... and {len(all_logs) - 20} more entries")
             else:
                 st.caption("No activity yet")
 
@@ -638,10 +645,11 @@ if view_mode == "🏠 Global Dashboard":
         
         with col_m3:
             alert_color = "#ef4444" if total_drift_count > 0 else "#10b981"
+            alert_text = f"⚠️ {total_drift_count} Need Rebalancing" if total_drift_count > 0 else f"{total_drift_count} Need Rebalancing"
             st.markdown(f"""
                 <div class="metric-showcase" style="background: linear-gradient(135deg, {alert_color} 0%, {alert_color} 100%);">
                     <h3>{total_drift_count}</h3>
-                    <p>{"⚠️ " if total_drift_count > 0 else ""}Portfolios Need Rebalancing</p>
+                    <p>{alert_text}</p>
                 </div>
             """, unsafe_allow_html=True)
         
@@ -820,8 +828,14 @@ else:  # Portfolio Manager
                 
                 st.divider()
             
-            # Header Stats
-            alert_html = '<span class="drift-badge">🚨 ACTION REQUIRED</span>' if needs_rebalance else '<span class="success-badge">✓ Optimized</span>'
+            # Determine status badge
+            has_rebalanced = prof.get("last_rebalanced") is not None
+            if not has_rebalanced:
+                alert_html = '<span style="background: #94a3b8; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">⚪ Not Rebalanced</span>'
+            elif needs_rebalance:
+                alert_html = '<span class="drift-badge">🚨 ACTION REQUIRED</span>'
+            else:
+                alert_html = '<span class="success-badge">✅ Optimized</span>'
             
             st.markdown(f"""
                 <div class="premium-card">
