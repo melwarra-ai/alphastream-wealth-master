@@ -61,16 +61,11 @@ st.markdown("""
     .profile-tile {
         background: white;
         border-radius: 12px;
-        padding: 20px;
-        text-align: center;
+        padding: 24px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.08);
         transition: all 0.3s ease;
         cursor: pointer;
         border: 2px solid transparent;
-        min-height: 140px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
     }
     
     .profile-tile:hover {
@@ -172,6 +167,7 @@ st.markdown("""
         font-weight: 700;
         color: #1e293b;
         margin-top: 8px;
+        word-wrap: break-word; /* Prevent overflow */
     }
     
     .allocation-blocked {
@@ -224,6 +220,7 @@ st.markdown("""
         border-radius: 8px;
         font-weight: 600;
         transition: all 0.3s ease;
+        margin-bottom: 8px; /* Reduce gap between button and card */
     }
     
     .stButton > button:hover {
@@ -722,21 +719,27 @@ if view_mode == "🏠 Global Dashboard":
                     st.session_state.active_profile = name
                     st.rerun()
                 
-                # Profile tile with status indicator and light blue background when optimized
+                # Profile tile with clean layout
                 st.markdown(f"""
-                    <div class="{tile_class}" style="margin-top: -10px; cursor: pointer;">
-                        <div>
+                    <div class="{tile_class}" style="cursor: pointer; padding: 24px; margin-top: 0px;">
+                        <div style="margin-bottom: 16px; text-align: center;">
                             {status_badge}
                         </div>
-                        <div style="margin: 16px 0;">
+                        <div style="margin: 20px 0; text-align: center;">
                             <div class="stat-label">Portfolio Value</div>
-                            <div class="stat-value">${curr_v:,.0f}</div>
+                            <div class="stat-value" style="font-size: 2rem;">${curr_v:,.0f}</div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #64748b;">
-                            <span>Goal: {p_data['yearly_goal_pct']}%/yr</span>
-                            <span style="color: {'#10b981' if roi_pct >= 0 else '#ef4444'}; font-weight: 600;">
-                                ROI: {roi_pct:+.1f}%
-                            </span>
+                        <div style="display: flex; justify-content: space-between; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 0.9rem; color: #64748b;">
+                            <div>
+                                <div style="font-size: 0.75rem; opacity: 0.8;">Goal</div>
+                                <div style="font-weight: 600;">{p_data['yearly_goal_pct']}%/yr</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.75rem; opacity: 0.8;">ROI</div>
+                                <div style="font-weight: 700; color: {'#10b981' if roi_pct >= 0 else '#ef4444'};">
+                                    {roi_pct:+.1f}%
+                                </div>
+                            </div>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -745,6 +748,9 @@ if view_mode == "🏠 Global Dashboard":
                     with st.expander("⚠️ View Drift Details", expanded=False):
                         for detail in drift_details:
                             st.caption(f"• {detail}")
+                
+                # Add spacing between tiles
+                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
 else:  # Portfolio Manager
     if not st.session_state.active_profile or st.session_state.active_profile not in st.session_state.db["profiles"]:
