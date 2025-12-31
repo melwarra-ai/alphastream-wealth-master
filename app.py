@@ -84,7 +84,7 @@ st.markdown("""
     }
     
     .profile-tile-warning {
-        border-left: 4px solid #f59e0b;
+        border-left: 4px solid #ef4444;
         animation: pulse-border 2s infinite;
     }
     
@@ -141,21 +141,6 @@ st.markdown("""
         opacity: 0.9;
     }
     
-    .asset-row {
-        background: #f8fafc;
-        padding: 16px;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        border-left: 4px solid #3b82f6;
-    }
-    
-    .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin: 20px 0;
-    }
-    
     .stat-item {
         background: white;
         padding: 16px;
@@ -181,23 +166,43 @@ st.markdown("""
     
     .allocation-blocked {
         background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-        border: 2px solid #ef4444;
-        padding: 16px;
+        border: 3px solid #ef4444;
+        padding: 20px;
         border-radius: 12px;
         margin: 16px 0;
         text-align: center;
-        font-weight: 600;
+        font-weight: 700;
         color: #991b1b;
+        font-size: 1.1rem;
+        animation: shake 0.5s;
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
     }
     
     .buying-guide {
         background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
         border-left: 4px solid #3b82f6;
-        padding: 16px;
-        border-radius: 8px;
-        margin: 12px 0;
-        font-weight: 500;
+        padding: 20px;
+        border-radius: 12px;
+        margin: 16px 0;
+        font-weight: 600;
         color: #1e40af;
+        font-size: 1.05rem;
+        line-height: 1.8;
+    }
+    
+    .buying-guide-highlight {
+        background: #1e40af;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 1.2rem;
+        display: inline-block;
+        margin: 4px 0;
     }
     
     h1, h2, h3 {
@@ -214,6 +219,14 @@ st.markdown("""
     .stButton > button:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .sidebar-section {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border: 2px solid #e2e8f0;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -251,7 +264,6 @@ def log_profile(prof, message):
     prof["rebalance_logs"] = prof["rebalance_logs"][:50]
 
 def description_box(title, content):
-    """Render a premium description box"""
     st.markdown(f'''
         <div class="desc-box">
             <h4>{title}</h4>
@@ -267,7 +279,7 @@ if "current_page" not in st.session_state:
 if "active_profile" not in st.session_state:
     st.session_state.active_profile = None
 
-# ===== SIDEBAR NAVIGATION =====
+# ===== SIDEBAR =====
 with st.sidebar:
     st.markdown("### 🛡️ AlphaStream")
     st.caption("Wealth Management Suite v4.0")
@@ -316,7 +328,7 @@ with st.sidebar:
                 else:
                     st.warning(f"Profile '{n_name}' already exists")
     
-    # Profile Selection & Asset Management for Portfolio Manager
+    # ===== ASSET ALLOCATION SECTION (IN SIDEBAR) =====
     if view_mode == "📊 Portfolio Manager" and st.session_state.db["profiles"]:
         st.divider()
         st.markdown("### 🎯 Active Profile")
@@ -347,53 +359,64 @@ with st.sidebar:
         
         # Drift Strategy Settings
         st.markdown("### ⚙️ Drift Strategy")
-        with st.expander("Configure Tolerance", expanded=False):
-            new_tolerance = st.number_input(
-                "Drift Tolerance (%)",
-                value=float(prof.get('drift_tolerance', 5.0)),
-                min_value=0.5,
-                max_value=20.0,
-                step=0.5,
-                help="Alert when any asset drifts this much from target"
-            )
-            if st.button("💾 Update", use_container_width=True, key="update_tolerance"):
-                prof['drift_tolerance'] = new_tolerance
-                save_db(st.session_state.db)
-                log_profile(prof, f"Updated drift tolerance to {new_tolerance}%")
-                st.success("✅ Updated!")
-                st.rerun()
-        
-        st.caption(f"Current tolerance: **{prof.get('drift_tolerance', 5.0)}%**")
+        new_tolerance = st.number_input(
+            "Drift Tolerance (%)",
+            value=float(prof.get('drift_tolerance', 5.0)),
+            min_value=0.5,
+            max_value=20.0,
+            step=0.5,
+            help="Alert when any asset drifts this much from target",
+            key="drift_tolerance_input"
+        )
+        if st.button("💾 Update Tolerance", use_container_width=True, key="update_tolerance"):
+            prof['drift_tolerance'] = new_tolerance
+            save_db(st.session_state.db)
+            log_profile(prof, f"Updated drift tolerance to {new_tolerance}%")
+            st.success("✅ Updated!")
+            st.rerun()
         
         st.divider()
         
-        # Asset Allocation Section (MOVED TO SIDEBAR)
+        # ===== ASSET ALLOCATION - NOW IN SIDEBAR =====
         st.markdown("### 🎯 Asset Allocation")
+        st.markdown("**Add or Update Assets**")
         
         # Calculate current allocation
         current_alloc = sum(a.get('target', 0) for a in prof.get("assets", {}).values())
         
-        # Show allocation meter
+        # Allocation progress bar
+        progress_color = "🟢" if current_alloc < 100 else "🔴"
         st.progress(min(current_alloc / 100, 1.0))
-        st.caption(f"**Allocated: {current_alloc:.1f}% / 100%**")
+        st.markdown(f"**{progress_color} Allocated: {current_alloc:.1f}% / 100%**")
         
-        # Asset input
+        # Asset ticker input
         a_sym = st.text_input(
             "Ticker Symbol",
             placeholder="e.g., AAPL, MSFT",
-            help="Enter a valid stock ticker",
+            help="Enter stock ticker and press Enter",
             key="ticker_input"
         ).upper().strip()
         
         is_existing = a_sym in prof.get("assets", {})
-        block_new = (not is_existing) and (current_alloc >= 100.0) and (a_sym != "")
+        
+        # Calculate available allocation space
+        if is_existing:
+            # If editing existing, exclude its current allocation
+            other_allocs = current_alloc - prof["assets"][a_sym].get("target", 0)
+        else:
+            other_allocs = current_alloc
+        
+        max_available = 100.0 - other_allocs
+        
+        # Check if new asset is blocked
+        block_new = (not is_existing) and (max_available <= 0) and (a_sym != "")
         
         # Show allocation block warning
         if block_new:
             st.markdown("""
                 <div class="allocation-blocked">
-                    🚫 Portfolio at 100% allocation<br>
-                    Remove or reduce existing assets first
+                    🚫 PORTFOLIO AT 100%<br>
+                    Remove or reduce existing assets first!
                 </div>
             """, unsafe_allow_html=True)
         
@@ -401,7 +424,7 @@ with st.sidebar:
         last_price = 1.0
         ticker_name = ""
         
-        # Validate ticker
+        # Validate ticker if entered and not blocked
         if a_sym and not block_new:
             try:
                 with st.spinner(f"🔍 Validating {a_sym}..."):
@@ -412,70 +435,90 @@ with st.sidebar:
                         ticker_info = t_check.info
                         ticker_name = ticker_info.get('longName', a_sym)
                         st.success(f"✓ {ticker_name}")
-                        st.caption(f"{p_flag} **${last_price:,.2f}** per unit")
+                        st.caption(f"**Current Price:** {p_flag} ${last_price:,.2f}")
                         valid_ticker = True
-            except:
+                    else:
+                        st.error(f"❌ No data found for {a_sym}")
+            except Exception as e:
                 if a_sym:
-                    st.warning(f"⚠️ Invalid ticker '{a_sym}'")
+                    st.error(f"❌ Invalid ticker: {a_sym}")
         
-        # Asset form
+        # Asset allocation form (only if valid ticker)
         if valid_ticker:
-            default_target = prof.get("assets", {}).get(a_sym, {}).get("target", 0.0)
-            other_allocs = current_alloc - default_target
-            max_val = 100.0 - other_allocs
+            st.markdown("---")
             
+            # Get default values if editing
+            default_target = prof.get("assets", {}).get(a_sym, {}).get("target", 0.0)
+            default_units = prof.get("assets", {}).get(a_sym, {}).get("units", 0.0)
+            
+            # Target percentage with STRICT maximum enforcement
             a_w = st.number_input(
-                f"Target % (Max: {max_val:.1f}%)",
+                f"Target Allocation %",
                 min_value=0.0,
-                max_value=max_val,
-                value=float(default_target),
+                max_value=max_available,
+                value=min(float(default_target), max_available),
                 step=0.5,
-                help="Desired portfolio percentage",
+                help=f"Maximum available: {max_available:.1f}%",
                 key="target_weight"
             )
             
-            # BUYING GUIDE - Suggest units needed
+            # BUYING GUIDE - Shows immediately when target > 0
             if a_w > 0:
-                target_value = a_w / 100 * prof['principal']
+                target_value = (a_w / 100) * prof['principal']
                 suggested_units = target_value / last_price
+                
                 st.markdown(f"""
                     <div class="buying-guide">
-                        💡 <strong>Buying Guide</strong><br>
-                        To reach {a_w}% allocation:<br>
-                        Buy <strong>{suggested_units:.4f} units</strong> of {a_sym}<br>
-                        (Target value: ${target_value:,.2f})
+                        💡 <strong>BUYING GUIDE</strong><br><br>
+                        To reach <strong>{a_w}%</strong> allocation of {a_sym}:<br><br>
+                        You need to buy:<br>
+                        <span class="buying-guide-highlight">{suggested_units:.4f} units</span><br><br>
+                        Total value: <strong>${target_value:,.2f}</strong><br>
+                        At current price: <strong>${last_price:,.2f}</strong> per unit
                     </div>
                 """, unsafe_allow_html=True)
             
+            # Units owned input
             a_u = st.number_input(
-                "Units Owned",
+                "Units Currently Owned",
                 min_value=0.0,
-                value=float(prof.get("assets", {}).get(a_sym, {}).get("units", 0.0)),
-                step=0.01,
+                value=float(default_units),
+                step=0.0001,
                 format="%.4f",
-                help="Number of shares you own",
+                help="How many shares do you own?",
                 key="units_owned"
             )
             
+            st.markdown("---")
+            
+            # Action buttons
             col_b1, col_b2 = st.columns(2)
             
             with col_b1:
-                if st.button("💾 Save", use_container_width=True, type="primary", key="save_asset"):
+                save_disabled = (a_w <= 0) or (a_w > max_available)
+                if st.button("💾 Save Asset", use_container_width=True, type="primary", key="save_asset", disabled=save_disabled):
                     prof.setdefault("assets", {})[a_sym] = {"units": a_u, "target": a_w}
                     action = "Updated" if is_existing else "Added"
                     log_profile(prof, f"{action} {a_sym}: {a_w}% target, {a_u:.4f} units")
                     save_db(st.session_state.db)
-                    st.success(f"✅ {action}!")
+                    st.success(f"✅ {action} {a_sym}!")
                     st.rerun()
             
             with col_b2:
-                if a_sym in prof.get("assets", {}):
+                if is_existing:
                     if st.button("🗑️ Remove", use_container_width=True, key="remove_asset"):
                         del prof["assets"][a_sym]
-                        log_profile(prof, f"Removed {a_sym}")
+                        log_profile(prof, f"Removed {a_sym} from portfolio")
                         save_db(st.session_state.db)
-                        st.success(f"✅ Removed!")
+                        st.success(f"✅ Removed {a_sym}!")
                         st.rerun()
+        
+        # Show existing assets
+        if prof.get("assets"):
+            st.divider()
+            st.markdown("### 📋 Current Assets")
+            for ticker, data in prof["assets"].items():
+                st.caption(f"**{ticker}**: {data['target']}% ({data['units']:.4f} units)")
 
 # ===== MAIN CONTENT =====
 if view_mode == "🏠 Global Dashboard":
@@ -489,7 +532,7 @@ if view_mode == "🏠 Global Dashboard":
     profiles = st.session_state.db.get("profiles", {})
     
     if not profiles:
-        st.info("👋 Welcome to AlphaStream! Create your first investment profile using the sidebar to get started.")
+        st.info("👋 Welcome to AlphaStream! Create your first investment profile using the sidebar.")
         
         st.markdown("### 🎯 Key Features")
         
@@ -585,7 +628,7 @@ if view_mode == "🏠 Global Dashboard":
             st.markdown(f"""
                 <div class="metric-showcase" style="background: linear-gradient(135deg, {alert_color} 0%, {alert_color} 100%);">
                     <h3>{total_drift_count}</h3>
-                    <p>Profiles Need Rebalancing</p>
+                    <p>{"⚠️ " if total_drift_count > 0 else ""}Portfolios Need Rebalancing</p>
                 </div>
             """, unsafe_allow_html=True)
         
@@ -617,7 +660,7 @@ if view_mode == "🏠 Global Dashboard":
             
             p_flag = "🇺🇸" if p_data.get("currency") == "USD" else "🇨🇦"
             tile_class = "profile-tile-warning" if has_drift else "profile-tile-optimized"
-            status_badge = '<span class="drift-badge">🚨 REBALANCE NEEDED</span>' if has_drift else '<span class="success-badge">✓ Optimized</span>'
+            status_badge = '<span class="drift-badge">🚨 REBALANCE</span>' if has_drift else '<span class="success-badge">✓ Optimized</span>'
             
             with cols[i % 2]:
                 st.markdown(f"""
@@ -646,7 +689,6 @@ if view_mode == "🏠 Global Dashboard":
                 
                 if st.button(f"📊 Manage {name}", key=f"btn_{name}", use_container_width=True):
                     st.session_state.active_profile = name
-                    st.session_state.current_page = "Portfolio Manager"
                     st.rerun()
 
 else:  # Portfolio Manager
@@ -664,7 +706,15 @@ else:  # Portfolio Manager
     tickers = list(asset_dict.keys())
     
     if not tickers:
-        st.info("👆 Add your first asset using the sidebar to start tracking your portfolio")
+        st.info("👈 **Add your first asset using the sidebar** to start tracking your portfolio")
+        st.markdown("""
+        ### 📝 Quick Start Guide:
+        1. Enter a ticker symbol (e.g., AAPL, MSFT, VTI)
+        2. Set your target allocation percentage
+        3. See the **buying guide** showing exact units needed
+        4. Enter units you currently own
+        5. Click **Save Asset**
+        """)
         st.stop()
     
     # Fetch data and analyze
@@ -697,7 +747,7 @@ else:  # Portfolio Manager
             perc_diff = ((curr_v / target_val) - 1) * 100
             roi_pct = ((curr_v / start_val) - 1) * 100
             
-            # DRIFT DETECTION ANALYSIS
+            # DRIFT DETECTION
             needs_rebalance = False
             drift_assets = []
             
@@ -710,32 +760,38 @@ else:  # Portfolio Manager
                     needs_rebalance = True
                     drift_assets.append((t, drift, actual_pct, target_pct))
             
-            # PROMINENT DRIFT ALERT
+            # DRIFT ALERT BANNER
             if needs_rebalance:
                 st.markdown("""
                     <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); 
-                                border: 3px solid #ef4444; border-radius: 16px; padding: 24px; 
-                                margin-bottom: 24px; animation: pulse-alert 2s infinite;">
-                        <h2 style="color: #991b1b; margin: 0 0 12px 0;">
-                            🚨 DRIFT ALERT: Rebalancing Required
+                                border: 4px solid #ef4444; border-radius: 16px; padding: 28px; 
+                                margin-bottom: 28px; animation: pulse-alert 2s infinite;">
+                        <h2 style="color: #991b1b; margin: 0 0 16px 0; font-size: 1.8rem;">
+                            🚨 DRIFT ALERT: Immediate Rebalancing Required
                         </h2>
-                        <p style="color: #7f1d1d; font-size: 1.1rem; margin: 0;">
-                            <strong>{0}</strong> asset(s) have drifted beyond your {1}% tolerance threshold.
-                            Review the rebalance analysis below and execute rebalancing to restore optimal allocation.
+                        <p style="color: #7f1d1d; font-size: 1.2rem; margin: 0; line-height: 1.6;">
+                            <strong>{0} asset(s)</strong> have exceeded your <strong>{1}% drift tolerance</strong>.<br>
+                            Your portfolio allocation has shifted significantly. Review the analysis below and execute rebalancing.
                         </p>
                     </div>
+                    <style>
+                    @keyframes pulse-alert {{
+                        0%, 100% {{ transform: scale(1); }}
+                        50% {{ transform: scale(1.01); }}
+                    }}
+                    </style>
                 """.format(len(drift_assets), prof.get('drift_tolerance', 5.0)), unsafe_allow_html=True)
                 
-                # Show which assets drifted
-                st.markdown("**Assets Requiring Attention:**")
+                # Drift details
+                st.markdown("#### 📊 Assets Requiring Rebalancing:")
                 for ticker, drift, actual, target in drift_assets:
-                    col1, col2, col3 = st.columns([2, 1, 1])
+                    col1, col2, col3 = st.columns([2, 2, 2])
                     with col1:
                         st.markdown(f"**{ticker}**")
                     with col2:
-                        st.markdown(f"Drift: **{drift:.2f}%**")
+                        st.markdown(f"Drift: **{drift:.2f}%** ⚠️")
                     with col3:
-                        st.markdown(f"Actual: **{actual:.1f}%** (Target: {target:.1f}%)")
+                        st.markdown(f"Current: **{actual:.1f}%** (Target: {target:.1f}%)")
                 
                 st.divider()
             
@@ -800,17 +856,15 @@ else:  # Portfolio Manager
             
             fig = go.Figure()
             
-            # Actual performance
             fig.add_trace(go.Scatter(
                 x=data.index,
                 y=daily_val,
-                name='Actual Portfolio Value',
+                name='Actual Portfolio',
                 line=dict(color='#3b82f6', width=3),
                 fill='tozeroy',
                 fillcolor='rgba(59, 130, 246, 0.1)'
             ))
             
-            # Target path
             days = np.arange(len(data.index))
             daily_rate = (prof['yearly_goal_pct'] / 100) / 365.25
             target_path = start_val * (1 + daily_rate) ** days
@@ -818,7 +872,7 @@ else:  # Portfolio Manager
             fig.add_trace(go.Scatter(
                 x=data.index,
                 y=target_path,
-                name=f'Target Path ({prof["yearly_goal_pct"]}%/yr)',
+                name=f'Goal Path ({prof["yearly_goal_pct"]}%/yr)',
                 line=dict(color='#10b981', width=2, dash='dash')
             ))
             
@@ -826,33 +880,18 @@ else:  # Portfolio Manager
                 hovermode='x unified',
                 plot_bgcolor='white',
                 height=500,
-                xaxis=dict(
-                    showgrid=True,
-                    gridcolor='#f1f5f9',
-                    title='Date'
-                ),
-                yaxis=dict(
-                    showgrid=True,
-                    gridcolor='#f1f5f9',
-                    title='Portfolio Value ($)'
-                ),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
-                )
+                xaxis=dict(showgrid=True, gridcolor='#f1f5f9', title='Date'),
+                yaxis=dict(showgrid=True, gridcolor='#f1f5f9', title='Portfolio Value ($)'),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             
             st.plotly_chart(fig, use_container_width=True)
             
             st.divider()
             
-            # Rebalance Section
+            # Rebalance Analysis
             st.markdown("### ⚖️ Rebalance Analysis")
             
-            # Rebalance Preview Table
             rows = []
             total_turnover = 0
             
@@ -884,43 +923,30 @@ else:  # Portfolio Manager
                     "Target %": f"{tar_w:.2f}%",
                     "Drift": f"{drift:+.2f}%",
                     "Action": action,
-                    "Units Change": f"{unit_diff:+.4f}",
-                    "Value Change": f"${val_diff:+,.2f}"
+                    "Units Δ": f"{unit_diff:+.4f}",
+                    "Value Δ": f"${val_diff:+,.2f}"
                 })
             
             df_rebalance = pd.DataFrame(rows)
+            st.dataframe(df_rebalance, use_container_width=True, hide_index=True)
             
-            st.dataframe(
-                df_rebalance,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Ticker": st.column_config.TextColumn("Ticker", width="small"),
-                    "Current %": st.column_config.TextColumn("Current %", width="small"),
-                    "Target %": st.column_config.TextColumn("Target %", width="small"),
-                    "Drift": st.column_config.TextColumn("Drift", width="small"),
-                    "Action": st.column_config.TextColumn("Action", width="small"),
-                    "Units Change": st.column_config.TextColumn("Units Δ", width="medium"),
-                    "Value Change": st.column_config.TextColumn("Value Δ", width="medium")
-                }
-            )
-            
-            st.metric("Total Trade Volume Required", f"${total_turnover:,.2f}")
+            st.metric("Total Trade Volume", f"${total_turnover:,.2f}")
             
             st.divider()
             
-            # Execution & Logs
+            # Execution
             col_exec1, col_exec2 = st.columns(2)
             
             with col_exec1:
                 st.markdown("### 🚀 Execute Rebalance")
                 
                 if needs_rebalance:
-                    st.warning("⚠️ **Rebalancing recommended** to restore optimal allocation")
+                    st.warning("⚠️ **Rebalancing recommended**")
+                else:
+                    st.success("✓ **Portfolio optimally balanced**")
                 
-                if st.button("⚡ Execute Rebalancing Now", type="primary", use_container_width=True, disabled=not needs_rebalance):
-                    # Update units to target allocations
-                    detail_log = f"Rebalanced {datetime.now().strftime('%Y-%m-%d %H:%M')} - "
+                if st.button("⚡ Execute Rebalancing", type="primary", use_container_width=True, disabled=not needs_rebalance):
+                    detail_log = f"Rebalanced at {datetime.now().strftime('%Y-%m-%d %H:%M')} - "
                     changes = []
                     
                     for t in v_t:
@@ -930,21 +956,16 @@ else:  # Portfolio Manager
                         changes.append(f"{t}: {new_units-old_units:+.4f}")
                     
                     detail_log += ", ".join(changes)
-                    
                     prof.setdefault("rebalance_stats", []).insert(0, detail_log)
                     prof["rebalance_stats"] = prof["rebalance_stats"][:20]
-                    
-                    log_profile(prof, "Portfolio rebalanced to target allocations")
+                    log_profile(prof, "Portfolio rebalanced")
                     save_db(st.session_state.db)
                     
-                    st.success("✅ Portfolio rebalanced successfully!")
+                    st.success("✅ Rebalanced!")
                     st.balloons()
                     st.rerun()
                 
-                if not needs_rebalance:
-                    st.info("✓ Portfolio is optimally balanced")
-                
-                st.markdown("#### 📊 Recent Rebalances")
+                st.markdown("#### 📊 Rebalance History")
                 for entry in prof.get("rebalance_stats", [])[:5]:
                     st.caption(entry)
             
@@ -954,16 +975,14 @@ else:  # Portfolio Manager
                     st.caption(f"**{log_entry['date']}**: {log_entry['event']}")
         
         except Exception as e:
-            st.error(f"❌ Error analyzing portfolio: {str(e)}")
+            st.error(f"❌ Error: {str(e)}")
             st.stop()
 
 # Footer
 st.divider()
 st.markdown("""
     <div style="text-align: center; color: #64748b; padding: 20px;">
-        <p><strong>AlphaStream Wealth Master</strong> • Portfolio Management Suite v4.0</p>
-        <p style="font-size: 0.85rem;">
-            Real-time market data powered by Yahoo Finance. For informational purposes only.
-        </p>
+        <p><strong>AlphaStream Wealth Master</strong> • v4.0</p>
+        <p style="font-size: 0.85rem;">Market data by Yahoo Finance • For informational purposes only</p>
     </div>
 """, unsafe_allow_html=True)
