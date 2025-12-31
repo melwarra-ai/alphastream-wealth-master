@@ -580,9 +580,9 @@ if view_mode == "🏠 Global Dashboard":
                 with st.spinner("📊 Fetching market data..."):
                     raw_px = yf.download(list(all_tickers), period="1d", progress=False)['Close']
                     if len(all_tickers) == 1:
-                        prices = {list(all_tickers)[0]: raw_px.iloc[-1]}
+                        prices = {list(all_tickers)[0]: float(raw_px.iloc[-1])}
                     else:
-                        prices = raw_px.iloc[-1].to_dict()
+                        prices = {k: float(v) for k, v in raw_px.iloc[-1].to_dict().items()}
             except Exception as e:
                 st.warning(f"⚠️ Could not fetch prices: {str(e)}")
         
@@ -592,14 +592,14 @@ if view_mode == "🏠 Global Dashboard":
         
         for p_data in profiles.values():
             p_assets = p_data.get("assets", {})
-            curr_v = sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets)
+            curr_v = float(sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets))
             total_value += curr_v
             
             # Check drift
             if curr_v > 0:
                 for t in p_assets:
-                    actual_pct = (p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100)
-                    target_pct = p_assets[t]["target"]
+                    actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
+                    target_pct = float(p_assets[t]["target"])
                     if abs(actual_pct - target_pct) >= p_data.get("drift_tolerance", 5.0):
                         total_drift_count += 1
                         break
@@ -640,22 +640,22 @@ if view_mode == "🏠 Global Dashboard":
         cols = st.columns(2)
         for i, (name, p_data) in enumerate(profiles.items()):
             p_assets = p_data.get("assets", {})
-            curr_v = sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets)
+            curr_v = float(sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets))
             
             # Check for drift
             has_drift = False
             drift_details = []
             if curr_v > 0:
                 for t in p_assets:
-                    actual_pct = (p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100)
-                    target_pct = p_assets[t]["target"]
+                    actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
+                    target_pct = float(p_assets[t]["target"])
                     drift = abs(actual_pct - target_pct)
                     if drift >= p_data.get("drift_tolerance", 5.0):
                         has_drift = True
                         drift_details.append(f"{t}: {drift:.1f}% drift")
             
             # Calculate ROI
-            start_val = p_data.get('principal', 0)
+            start_val = float(p_data.get('principal', 0))
             roi_pct = ((curr_v / start_val) - 1) * 100 if start_val > 0 else 0
             
             p_flag = "🇺🇸" if p_data.get("currency") == "USD" else "🇨🇦"
@@ -738,12 +738,12 @@ else:  # Portfolio Manager
                 axis=1
             )
             
-            curr_v = daily_val.iloc[-1]
-            start_val = prof['principal']
+            curr_v = float(daily_val.iloc[-1])
+            start_val = float(prof['principal'])
             
             # Calculate time-based metrics
             years = max((data.index[-1] - data.index[0]).days / 365.25, 0.01)
-            target_val = start_val * (1 + (prof['yearly_goal_pct']/100))**years
+            target_val = start_val * (1 + (float(prof['yearly_goal_pct'])/100))**years
             perc_diff = ((curr_v / target_val) - 1) * 100
             roi_pct = ((curr_v / start_val) - 1) * 100
             
@@ -752,9 +752,9 @@ else:  # Portfolio Manager
             drift_assets = []
             
             for t in v_t:
-                actual_pct = (asset_dict[t]["units"] * data[t].iloc[-1] / curr_v * 100)
-                target_pct = asset_dict[t]["target"]
-                drift = abs(actual_pct - target_pct)
+                actual_pct = float((asset_dict[t]["units"] * data[t].iloc[-1] / curr_v * 100))
+                target_pct = float(asset_dict[t]["target"])
+                drift = float(abs(actual_pct - target_pct))
                 
                 if drift >= prof.get("drift_tolerance", 5.0):
                     needs_rebalance = True
@@ -866,7 +866,7 @@ else:  # Portfolio Manager
             ))
             
             days = np.arange(len(data.index))
-            daily_rate = (prof['yearly_goal_pct'] / 100) / 365.25
+            daily_rate = (float(prof['yearly_goal_pct']) / 100) / 365.25
             target_path = start_val * (1 + daily_rate) ** days
             
             fig.add_trace(go.Scatter(
@@ -896,9 +896,9 @@ else:  # Portfolio Manager
             total_turnover = 0
             
             for t in v_t:
-                p = data[t].iloc[-1]
-                cur_u = asset_dict[t]["units"]
-                tar_w = asset_dict[t]['target']
+                p = float(data[t].iloc[-1])
+                cur_u = float(asset_dict[t]["units"])
+                tar_w = float(asset_dict[t]['target'])
                 
                 act_val = cur_u * p
                 act_w = (act_val / curr_v * 100)
@@ -950,8 +950,8 @@ else:  # Portfolio Manager
                     changes = []
                     
                     for t in v_t:
-                        old_units = asset_dict[t]["units"]
-                        new_units = (asset_dict[t]["target"] / 100 * curr_v) / data[t].iloc[-1]
+                        old_units = float(asset_dict[t]["units"])
+                        new_units = float((asset_dict[t]["target"] / 100 * curr_v) / data[t].iloc[-1])
                         asset_dict[t]["units"] = new_units
                         changes.append(f"{t}: {new_units-old_units:+.4f}")
                     
