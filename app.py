@@ -81,6 +81,7 @@ st.markdown("""
     
     .profile-tile-optimized {
         border-left: 4px solid #10b981;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); /* Light blue background for optimized state */
     }
     
     .profile-tile-warning {
@@ -101,23 +102,32 @@ st.markdown("""
         border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 700;
-        animation: pulse-badge 1.5s infinite;
+        animation: pulse-badge 1.5s infinite; /* Blinking animation for rebalance required */
         box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
     }
     
     @keyframes pulse-badge {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.8; transform: scale(1.05); }
+        0%, 100% { 
+            opacity: 1; 
+            transform: scale(1);
+            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
+        }
+        50% { 
+            opacity: 0.7; 
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(239, 68, 68, 0.6); /* Enhanced blink effect */
+        }
     }
     
     .success-badge {
         display: inline-block;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%); /* Green gradient for optimized state */
         color: white;
         padding: 6px 14px;
         border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 600;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3); /* Green shadow for emphasis */
     }
     
     .metric-showcase {
@@ -614,15 +624,19 @@ if view_mode == "🏠 Global Dashboard":
             curr_v = float(sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets))
             total_value += curr_v
             
-            # Check drift only if profile has been rebalanced before
+            # Check if rebalance required: never rebalanced with assets OR has drift after rebalancing
             has_rebalanced = p_data.get("last_rebalanced") is not None
-            if curr_v > 0 and has_rebalanced:
-                for t in p_assets:
-                    actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
-                    target_pct = float(p_assets[t]["target"])
-                    if abs(actual_pct - target_pct) >= p_data.get("drift_tolerance", 5.0):
-                        total_drift_count += 1
-                        break
+            has_assets = len(p_assets) > 0
+            
+            if (not has_rebalanced and has_assets) or (has_rebalanced and curr_v > 0):
+                # Check for drift if has assets
+                if curr_v > 0:
+                    for t in p_assets:
+                        actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
+                        target_pct = float(p_assets[t]["target"])
+                        if (not has_rebalanced) or (abs(actual_pct - target_pct) >= p_data.get("drift_tolerance", 5.0)):
+                            total_drift_count += 1
+                            break
         
         # Top Metrics
         col_m1, col_m2, col_m3 = st.columns(3)
@@ -684,25 +698,33 @@ if view_mode == "🏠 Global Dashboard":
             
             p_flag = "🇺🇸" if p_data.get("currency") == "USD" else "🇨🇦"
             
-            # Determine status
-            if not has_rebalanced:
+            # Determine status - show rebalance required if never rebalanced with assets OR has drift
+            if not has_rebalanced and len(p_assets) > 0:
+                # Profile has assets but never rebalanced - show blinking rebalance required
+                tile_class = "profile-tile-warning"
+                status_badge = '<span class="drift-badge">🚨 REBALANCE REQUIRED</span>'
+            elif not has_rebalanced:
+                # Profile has no assets yet
                 tile_class = "profile-tile"
                 status_badge = '<span style="background: #94a3b8; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">⚪ Not Rebalanced</span>'
             elif has_drift:
+                # Profile rebalanced before but now has drift - show blinking rebalance required
                 tile_class = "profile-tile-warning"
-                status_badge = '<span class="drift-badge">🚨 REBALANCE</span>'
+                status_badge = '<span class="drift-badge">🚨 REBALANCE REQUIRED</span>'
             else:
+                # Profile is optimized - green status after rebalance execution
                 tile_class = "profile-tile-optimized"
-                status_badge = '<span class="success-badge">✓ Optimized</span>'
+                status_badge = '<span class="success-badge">✅ Optimized</span>'
             
             with cols[i % 2]:
-                # Clickable title button
+                # Clickable title button - navigates to profile page on click
                 if st.button(f"{p_flag} {name}", key=f"title_{name}", use_container_width=True, type="secondary"):
                     st.session_state.active_profile = name
                     st.rerun()
                 
+                # Profile tile with status indicator and light blue background when optimized
                 st.markdown(f"""
-                    <div class="{tile_class}" style="margin-top: -10px;">
+                    <div class="{tile_class}" style="margin-top: -10px; cursor: pointer;">
                         <div>
                             {status_badge}
                         </div>
@@ -828,13 +850,21 @@ else:  # Portfolio Manager
                 
                 st.divider()
             
-            # Determine status badge
+            # Determine status badge - consistent with global dashboard
             has_rebalanced = prof.get("last_rebalanced") is not None
-            if not has_rebalanced:
+            has_assets = len(asset_dict) > 0
+            
+            if not has_rebalanced and has_assets:
+                # Profile has assets but never rebalanced - show blinking rebalance required
+                alert_html = '<span class="drift-badge">🚨 REBALANCE REQUIRED</span>'
+            elif not has_rebalanced:
+                # Profile has no assets yet
                 alert_html = '<span style="background: #94a3b8; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">⚪ Not Rebalanced</span>'
             elif needs_rebalance:
-                alert_html = '<span class="drift-badge">🚨 ACTION REQUIRED</span>'
+                # Profile rebalanced before but now has drift - show blinking rebalance required
+                alert_html = '<span class="drift-badge">🚨 REBALANCE REQUIRED</span>'
             else:
+                # Profile is optimized - green status after rebalance execution
                 alert_html = '<span class="success-badge">✅ Optimized</span>'
             
             st.markdown(f"""
