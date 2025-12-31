@@ -1,117 +1,205 @@
 import streamlit as st
 import yfinance as yf
-import pd as pd
+import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 import json
 import os
 
-# ===== CONFIGURATION & STYLING =====
-st.set_page_config(page_title="AlphaStream Wealth Master", page_icon="🛡️", layout="wide")
+# ===== 1. ENHANCED CONFIGURATION & PERSISTENCE =====
+st.set_page_config(
+    page_title="AlphaStream Wealth Master",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# (Keep your existing CSS here - omitted for brevity in this block, but included in the logic)
-
-# ===== OPTIMIZED DATA LAYER =====
 DB_FILE = "alphastream_wealth.json"
 
-@st.cache_data(ttl=600)  # Cache prices for 10 minutes to prevent API rate limits
-def get_market_data(tickers):
+@st.cache_data(ttl=300)  # Optimization: Cache market data for 5 minutes
+def fetch_market_prices(tickers):
+    """Fetch latest prices with error handling for delisted/invalid tickers."""
     if not tickers:
         return {}
     try:
         data = yf.download(list(tickers), period="1d", progress=False)['Close']
+        if data.empty:
+            return {}
         if isinstance(data, pd.Series):
-            return {tickers[0]: float(data.iloc[-1])}
-        return {k: float(v) for k, v in data.iloc[-1].to_dict().items()}
+            return {list(tickers)[0]: float(data.iloc[-1])}
+        return {k: float(v) for k, v in data.iloc[-1].to_dict().items() if not pd.isna(v)}
     except Exception:
         return {}
 
 def load_db():
-    base = {"profiles": {}, "global_logs": []}
+    base_schema = {"profiles": {}, "global_logs": []}
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r") as f:
-            try:
+            try: 
                 data = json.load(f)
+                # Ensure schema integrity
+                data.setdefault("profiles", {})
+                for p in data["profiles"].values():
+                    p.setdefault("drift_tolerance", 5.0)
+                    p.setdefault("rebalance_logs", [])
+                    p.setdefault("last_rebalanced", None)
                 return data
-            except: return base
-    return base
+            except: return base_schema
+    return base_schema
 
 def save_db(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-# ===== LOGIC ENHANCEMENT: THE REBALANCE CALCULATOR =====
-def calculate_rebalance_orders(prof, current_prices):
-    assets = prof.get("assets", {})
-    total_val = sum(assets[t]["units"] * current_prices.get(t, 0) for t in assets)
+def log_profile(prof, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    prof.setdefault("rebalance_logs", []).insert(0, {"date": timestamp, "event": str(message)})
+    prof["rebalance_logs"] = prof["rebalance_logs"][:50]
+
+# ===== 2. PREMIUM STYLING (YOUR ORIGINAL CSS) =====
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    .main { background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%); }
+    .premium-card { background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 24px; border: 1px solid #e2e8f0; }
+    .desc-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+    .profile-tile-warning { border-left: 4px solid #ef4444; animation: pulse-border 2s infinite; background: white; padding: 24px; border-radius: 12px; }
+    .profile-tile-optimized { border-left: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 24px; border-radius: 12px; }
+    @keyframes pulse-border { 0%, 100% { border-left-color: #f59e0b; } 50% { border-left-color: #ef4444; } }
+    .drift-badge { background: #ef4444; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; animation: pulse-badge 1.5s infinite; }
+    @keyframes pulse-badge { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
+    .stat-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: #1e293b; }
+    </style>
+""", unsafe_allow_html=True)
+
+# ===== 3. SESSION STATE =====
+if "db" not in st.session_state:
+    st.session_state.db = load_db()
+if "active_profile" not in st.session_state:
+    st.session_state.active_profile = None
+
+# ===== 4. SIDEBAR (STRATEGY & ASSETS) =====
+with st.sidebar:
+    st.markdown("### 🛡️ AlphaStream")
+    nav = st.radio("Navigation", ["🏠 Global Dashboard", "📊 Portfolio Manager"])
     
-    # If no value (new portfolio), use Principal as the base
-    base_value = total_val if total_val > 0 else prof["principal"]
+    st.divider()
     
-    orders = []
-    for ticker, data in assets.items():
-        price = current_prices.get(ticker, 0)
-        if price <= 0: continue
+    # New Profile Form
+    with st.expander("🆕 Create New Profile"):
+        with st.form("new_prof"):
+            n_name = st.text_input("Profile Name")
+            n_p = st.number_input("Principal ($)", value=10000.0)
+            if st.form_submit_button("Initialize"):
+                if n_name and n_name not in st.session_state.db["profiles"]:
+                    st.session_state.db["profiles"][n_name] = {
+                        "currency": "USD", "principal": n_p, "yearly_goal_pct": 10.0,
+                        "start_date": str(date.today()), "assets": {}, "drift_tolerance": 5.0
+                    }
+                    save_db(st.session_state.db)
+                    st.rerun()
+
+    # Asset Management (Only if in Manager View)
+    if nav == "📊 Portfolio Manager" and st.session_state.active_profile:
+        st.divider()
+        prof = st.session_state.db["profiles"][st.session_state.active_profile]
+        st.markdown(f"### 🎯 Manage: {st.session_state.active_profile}")
         
-        target_val = (data["target"] / 100) * base_value
-        current_val = data["units"] * price
-        diff_val = target_val - current_val
-        diff_units = diff_val / price
+        a_sym = st.text_input("Ticker Symbol").upper()
+        if a_sym:
+            px_data = fetch_market_prices([a_sym])
+            if a_sym in px_data:
+                price = px_data[a_sym]
+                st.success(f"Price: ${price:,.2f}")
+                target = st.number_input("Target %", 0.0, 100.0, step=1.0)
+                units = st.number_input("Units Owned", 0.0, step=0.01)
+                
+                if st.button("💾 Save Asset"):
+                    prof["assets"][a_sym] = {"units": units, "target": target}
+                    save_db(st.session_state.db)
+                    st.rerun()
+            else:
+                st.error("Invalid Ticker")
+
+# ===== 5. MAIN CONTENT LIGIC =====
+if nav == "🏠 Global Dashboard":
+    st.title("🏠 Global Dashboard")
+    profiles = st.session_state.db["profiles"]
+    
+    # Fetch all prices at once (Optimization)
+    all_tickers = set()
+    for p in profiles.values(): all_tickers.update(p["assets"].keys())
+    prices = fetch_market_prices(all_tickers)
+    
+    cols = st.columns(2)
+    for i, (name, p_data) in enumerate(profiles.items()):
+        # Calculate Value & Drift
+        val = sum(p_data["assets"][t]["units"] * prices.get(t, 0) for t in p_data["assets"])
         
-        orders.append({
-            "ticker": ticker,
-            "action": "BUY" if diff_units > 0 else "SELL",
-            "units": abs(diff_units),
-            "value": abs(diff_val),
-            "target_pct": data["target"],
-            "current_pct": (current_val / total_val * 100) if total_val > 0 else 0
-        })
-    return orders, total_val
-
-# ===== MAIN APP LOGIC =====
-db = load_db()
-
-# [Sidebar Logic remains largely the same, but ensure we pass 'db' correctly]
-
-# ===== THE MISSING REBALANCE EXECUTION ENGINE =====
-# This replaces the bottom section of your code to make the "Execute" button actually work
-
-if st.session_state.current_page == "📊 Portfolio Manager":
-    prof = db["profiles"].get(st.session_state.active_profile)
-    if prof:
-        tickers = list(prof["assets"].keys())
-        prices = get_market_data(tickers)
-        orders, current_total = calculate_rebalance_orders(prof, prices)
+        has_drift = False
+        if val > 0:
+            for t, d in p_data["assets"].items():
+                actual = (d["units"] * prices.get(t, 0) / val) * 100
+                if abs(actual - d["target"]) > p_data["drift_tolerance"]:
+                    has_drift = True
         
-        # Check drift
-        max_drift = 0
-        if current_total > 0:
-            max_drift = max([abs(o['target_pct'] - o['current_pct']) for o in orders])
-        
-        needs_rebalance = (prof.get("last_rebalanced") is None) or (max_drift > prof.get("drift_tolerance", 5.0))
-
-        if needs_rebalance:
+        # Display Tile
+        with cols[i % 2]:
+            tile_style = "profile-tile-warning" if has_drift or not p_data["last_rebalanced"] else "profile-tile-optimized"
+            status = "🚨 REBALANCE REQUIRED" if has_drift else "✅ OPTIMIZED"
+            
             st.markdown(f"""
-                <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; padding: 20px; border-radius: 12px;">
-                    <h3 style="color: #ef4444; margin-top:0;">🚨 Strategy Drift Detected</h3>
-                    <p>Current drift is <b>{max_drift:.2f}%</b> (Tolerance: {prof['drift_tolerance']}%). 
-                    Execute the following trades to return to target allocation.</p>
+                <div class="{tile_style}">
+                    <div style="text-align:center">{status}</div>
+                    <div class="stat-label">Value</div>
+                    <div class="stat-value">${val:,.2f}</div>
                 </div>
             """, unsafe_allow_html=True)
-            
-            # Display Trade Table
-            df_orders = pd.DataFrame(orders)
-            st.table(df_orders[['ticker', 'action', 'units', 'value']].style.format({"units": "{:.4f}", "value": "${:,.2f}"}))
-            
-            if st.button("🚀 Execute Smart Rebalance", use_container_width=True, type="primary"):
-                # Logic: Update units in DB to match targets exactly
-                for ticker in prof["assets"]:
-                    price = prices.get(ticker)
-                    target_val = (prof["assets"][ticker]["target"] / 100) * (current_total if current_total > 0 else prof["principal"])
-                    prof["assets"][ticker]["units"] = target_val / price
-                
-                prof["last_rebalanced"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-                save_db(db)
-                st.success("Portfolio successfully rebalanced to target weights!")
+            if st.button(f"Manage {name}", key=f"btn_{name}"):
+                st.session_state.active_profile = name
                 st.rerun()
+
+else: # Portfolio Manager View
+    if not st.session_state.active_profile:
+        st.warning("Select a profile")
+    else:
+        name = st.session_state.active_profile
+        prof = st.session_state.db["profiles"][name]
+        st.title(f"📊 {name}")
+        
+        # Optimization: Detailed Analysis & Rebalance Logic
+        tickers = list(prof["assets"].keys())
+        prices = fetch_market_prices(tickers)
+        total_val = sum(prof["assets"][t]["units"] * prices.get(t, 0) for t in tickers)
+        
+        # REBALANCE CALCULATOR
+        st.subheader("⚖️ Rebalance Analysis")
+        rebalance_data = []
+        for t in tickers:
+            curr_val = prof["assets"][t]["units"] * prices.get(t, 0)
+            target_val = (prof["assets"][t]["target"] / 100) * (total_val if total_val > 0 else prof["principal"])
+            diff = target_val - curr_val
+            rebalance_data.append({
+                "Ticker": t,
+                "Current %": (curr_val/total_val*100) if total_val > 0 else 0,
+                "Target %": prof["assets"][t]["target"],
+                "Action": "BUY" if diff > 0 else "SELL",
+                "Value": abs(diff),
+                "Units": abs(diff / prices[t]) if prices.get(t, 0) > 0 else 0
+            })
+        
+        st.table(pd.DataFrame(rebalance_data))
+        
+        if st.button("🚀 Execute & Sync All Assets", type="primary"):
+            # The "Execution" logic updates the JSON units to perfectly match target %
+            for t in prof["assets"]:
+                target_v = (prof["assets"][t]["target"] / 100) * (total_val if total_val > 0 else prof["principal"])
+                prof["assets"][t]["units"] = target_v / prices[t]
+            
+            prof["last_rebalanced"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+            save_db(st.session_state.db)
+            st.success("Portfolio rebalanced!")
+            st.rerun()
