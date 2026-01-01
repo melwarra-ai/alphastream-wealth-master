@@ -436,6 +436,14 @@ with st.sidebar:
         st.caption("Add assets to your portfolio and set target percentages")
         st.markdown("**Add or Update Assets**")
         
+        with st.expander("💡 Need help finding tickers?", expanded=False):
+            st.caption("**Popular Examples:**")
+            st.caption("• Stocks: AAPL, MSFT, GOOGL, AMZN, TSLA")
+            st.caption("• ETFs: SPY, QQQ, VTI, VOO, IWM")
+            st.caption("• Bonds: AGG, BND, TLT")
+            st.caption("")
+            st.caption("Find more at: finance.yahoo.com")
+        
         # Calculate current allocation
         current_alloc = sum(a.get('target', 0) for a in prof.get("assets", {}).values())
         
@@ -494,17 +502,21 @@ with st.sidebar:
                     t_check = yf.Ticker(a_sym)
                     hist = t_check.history(period="1d")
                     if not hist.empty:
-                        last_price = hist['Close'].iloc[-1]
-                        ticker_info = t_check.info
-                        ticker_name = ticker_info.get('longName', a_sym)
+                        last_price = float(hist['Close'].iloc[-1])
+                        try:
+                            ticker_info = t_check.info
+                            ticker_name = ticker_info.get('longName', a_sym)
+                        except:
+                            ticker_name = a_sym
                         st.success(f"✓ {ticker_name}")
                         st.caption(f"**Current Price:** {p_flag} ${last_price:,.2f}")
                         valid_ticker = True
                     else:
-                        st.error(f"❌ No data found for {a_sym}")
+                        st.error(f"❌ No price data available for '{a_sym}'. Please check the ticker symbol.")
             except Exception as e:
                 if a_sym:
-                    st.error(f"❌ Invalid ticker: {a_sym}")
+                    st.error(f"❌ Cannot validate ticker '{a_sym}'. Please verify it's a valid stock symbol.")
+                    st.caption("💡 Try common tickers like: AAPL, MSFT, GOOGL, TSLA, SPY, QQQ")
         
         # Asset allocation form (only if valid ticker)
         if valid_ticker:
@@ -653,11 +665,18 @@ if view_mode == "🏠 Global Dashboard":
                 with st.spinner("📊 Fetching market data..."):
                     raw_px = yf.download(list(all_tickers), period="1d", progress=False)['Close']
                     if len(all_tickers) == 1:
-                        prices = {list(all_tickers)[0]: float(raw_px.iloc[-1])}
+                        if not raw_px.empty:
+                            prices = {list(all_tickers)[0]: float(raw_px.iloc[-1])}
                     else:
-                        prices = {k: float(v) for k, v in raw_px.iloc[-1].to_dict().items()}
+                        for k, v in raw_px.iloc[-1].to_dict().items():
+                            try:
+                                if pd.notna(v):
+                                    prices[k] = float(v)
+                            except:
+                                pass
             except Exception as e:
-                st.warning(f"⚠️ Could not fetch prices: {str(e)}")
+                st.warning(f"⚠️ Could not fetch current prices. Portfolio values may be outdated.")
+                st.caption("💡 Check your internet connection or verify all ticker symbols are valid")
         
         # Summary Metrics
         total_value = 0
@@ -867,13 +886,28 @@ else:  # Portfolio Manager
             
             if raw.empty:
                 st.error("❌ Could not fetch historical data. Please check your tickers and date range.")
+                st.info("💡 Common issues: Invalid ticker symbols, too recent inception date, or network connectivity.")
                 st.stop()
             
             data = raw['Close']
             if len(tickers) == 1:
                 data = pd.DataFrame(data, columns=tickers)
             
+            # Validate we have data for all tickers
             v_t = [t for t in tickers if t in data.columns]
+            
+            if not v_t:
+                st.error("❌ No valid ticker data found. Please check your asset symbols.")
+                st.stop()
+            
+            if len(v_t) < len(tickers):
+                missing = set(tickers) - set(v_t)
+                st.warning(f"⚠️ Could not load data for: {', '.join(missing)}")
+        
+        except Exception as e:
+            st.error(f"❌ Error fetching market data: {str(e)}")
+            st.info("💡 Please check your internet connection and verify all ticker symbols are valid.")
+            st.stop()
             
             # Calculate daily portfolio value
             daily_val = data[v_t].apply(
@@ -1074,16 +1108,16 @@ else:  # Portfolio Manager
             benchmark_ticker = prof.get('benchmark')
             if benchmark_ticker:
                 try:
-                    with st.spinner(f"Loading benchmark {benchmark_ticker}..."):
+                    with st.spinner(f"📊 Loading benchmark {benchmark_ticker}..."):
                         benchmark_raw = yf.download(benchmark_ticker, start=prof["start_date"], auto_adjust=True, progress=False)
                         if not benchmark_raw.empty:
                             benchmark_data = benchmark_raw['Close']
                             
                             # Normalize benchmark to start at same value as portfolio
-                            benchmark_normalized = (benchmark_data / benchmark_data.iloc[0]) * start_val
+                            benchmark_normalized = (benchmark_data / float(benchmark_data.iloc[0])) * start_val
                             
                             # Calculate benchmark return
-                            bench_return = ((benchmark_normalized.iloc[-1] / start_val) - 1) * 100
+                            bench_return = ((float(benchmark_normalized.iloc[-1]) / start_val) - 1) * 100
                             
                             fig.add_trace(go.Scatter(
                                 x=benchmark_data.index,
@@ -1096,8 +1130,11 @@ else:  # Portfolio Manager
                                              f'<b>Return:</b> {bench_return:+.1f}%<br>' +
                                              '<extra></extra>'
                             ))
+                        else:
+                            st.warning(f"⚠️ No benchmark data available for {benchmark_ticker}")
                 except Exception as e:
-                    st.warning(f"Could not load benchmark {benchmark_ticker}: {str(e)}")
+                    st.warning(f"⚠️ Could not load benchmark {benchmark_ticker}: Check ticker symbol or date range")
+                    st.caption("💡 Try saving a different benchmark from the sidebar")
             
             fig.update_layout(
                 hovermode='x unified',
