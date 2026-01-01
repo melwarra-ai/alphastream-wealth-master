@@ -368,6 +368,7 @@ with st.sidebar:
         
         # Drift Strategy Settings
         st.markdown("### ⚙️ Drift Strategy")
+        st.caption("Set tolerance threshold for rebalance alerts")
         new_tolerance = st.number_input(
             "Drift Tolerance (%)",
             value=float(prof.get('drift_tolerance', 5.0)),
@@ -388,6 +389,7 @@ with st.sidebar:
         
         # ===== ASSET ALLOCATION - NOW IN SIDEBAR =====
         st.markdown("### 🎯 Asset Allocation")
+        st.caption("Add assets to your portfolio and set target percentages")
         st.markdown("**Add or Update Assets**")
         
         # Calculate current allocation
@@ -535,6 +537,7 @@ with st.sidebar:
         # Activity Log in Sidebar
         st.divider()
         st.markdown("### 📜 Activity Log")
+        st.caption("Track all portfolio changes and updates")
         with st.expander("View Recent Activity", expanded=False):
             all_logs = prof.get("rebalance_logs", [])
             logs_to_show = all_logs[:20]
@@ -668,6 +671,7 @@ if view_mode == "🏠 Global Dashboard":
         
         # Portfolio Grid
         st.markdown("### 📁 Portfolio Strategies")
+        st.caption("Click any profile name to view detailed analytics and manage assets")
         
         cols = st.columns(2)
         for i, (name, p_data) in enumerate(profiles.items()):
@@ -689,9 +693,14 @@ if view_mode == "🏠 Global Dashboard":
                         has_drift = True
                         drift_details.append(f"{t}: {drift:.1f}% drift")
             
-            # Calculate ROI
+            # Calculate ROI and CAGR
             start_val = float(p_data.get('principal', 0))
             roi_pct = ((curr_v / start_val) - 1) * 100 if start_val > 0 else 0
+            
+            # Calculate CAGR (Compound Annual Growth Rate)
+            start_date = datetime.strptime(p_data.get('start_date', str(date.today())), '%Y-%m-%d')
+            years_elapsed = max((date.today() - start_date.date()).days / 365.25, 0.01)
+            cagr = ((curr_v / start_val) ** (1 / years_elapsed) - 1) * 100 if start_val > 0 and years_elapsed > 0 else 0
             
             p_flag = "🇺🇸" if p_data.get("currency") == "USD" else "🇨🇦"
             
@@ -761,6 +770,11 @@ else:  # Portfolio Manager
     p_flag = "🇺🇸" if prof.get("currency") == "USD" else "🇨🇦"
     
     st.title(f"{p_flag} {st.session_state.active_profile}")
+    
+    # Calculate CAGR for header display
+    prof_start_date = datetime.strptime(prof.get('start_date', str(date.today())), '%Y-%m-%d')
+    prof_years = max((date.today() - prof_start_date.date()).days / 365.25, 0.01)
+    
     st.caption(f"Portfolio Manager • Inception: {prof.get('start_date', 'N/A')} • Drift Tolerance: {prof.get('drift_tolerance', 5.0)}%")
     
     asset_dict = prof.get("assets", {})
@@ -883,7 +897,7 @@ else:  # Portfolio Manager
             """, unsafe_allow_html=True)
             
             # Key Metrics
-            col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+            col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns(5)
             
             with col_s1:
                 st.markdown(f"""
@@ -904,6 +918,18 @@ else:  # Portfolio Manager
                 """, unsafe_allow_html=True)
             
             with col_s3:
+                # Calculate CAGR for display
+                profile_cagr = ((curr_v / start_val) ** (1 / prof_years) - 1) * 100 if start_val > 0 else 0
+                st.markdown(f"""
+                    <div class="stat-item">
+                        <div class="stat-label">CAGR</div>
+                        <div class="stat-value" style="color: {'#10b981' if profile_cagr >= 0 else '#ef4444'};">
+                            {profile_cagr:+.2f}%
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with col_s4:
                 st.markdown(f"""
                     <div class="stat-item">
                         <div class="stat-label">vs Target Path</div>
@@ -913,7 +939,7 @@ else:  # Portfolio Manager
                     </div>
                 """, unsafe_allow_html=True)
             
-            with col_s4:
+            with col_s5:
                 annualized = ((curr_v / start_val) ** (1/years) - 1) * 100
                 st.markdown(f"""
                     <div class="stat-item">
@@ -928,6 +954,7 @@ else:  # Portfolio Manager
             
             # Performance Chart
             st.markdown("### 📈 Performance vs Goal Path")
+            st.caption("Track your portfolio's actual performance against your target growth trajectory")
             
             fig = go.Figure()
             
@@ -937,7 +964,11 @@ else:  # Portfolio Manager
                 name='Actual Portfolio',
                 line=dict(color='#3b82f6', width=3),
                 fill='tozeroy',
-                fillcolor='rgba(59, 130, 246, 0.1)'
+                fillcolor='rgba(59, 130, 246, 0.1)',
+                hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br>' +
+                             '<b>Portfolio Value:</b> $%{y:,.2f}<br>' +
+                             '<b>Performance:</b> Actual<br>' +
+                             '<extra></extra>'
             ))
             
             days = np.arange(len(data.index))
@@ -948,16 +979,44 @@ else:  # Portfolio Manager
                 x=data.index,
                 y=target_path,
                 name=f'Goal Path ({prof["yearly_goal_pct"]}%/yr)',
-                line=dict(color='#10b981', width=2, dash='dash')
+                line=dict(color='#10b981', width=2, dash='dash'),
+                hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br>' +
+                             '<b>Target Value:</b> $%{y:,.2f}<br>' +
+                             f'<b>Goal Rate:</b> {prof["yearly_goal_pct"]}% annually<br>' +
+                             '<extra></extra>'
             ))
             
             fig.update_layout(
                 hovermode='x unified',
                 plot_bgcolor='white',
-                height=500,
-                xaxis=dict(showgrid=True, gridcolor='#f1f5f9', title='Date'),
-                yaxis=dict(showgrid=True, gridcolor='#f1f5f9', title='Portfolio Value ($)'),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                height=550,
+                hoverlabel=dict(
+                    bgcolor="white",
+                    font_size=14,
+                    font_family="Inter, sans-serif",
+                    bordercolor="#e2e8f0"
+                ),
+                xaxis=dict(
+                    showgrid=True,
+                    gridcolor='#f1f5f9',
+                    title='Date',
+                    title_font=dict(size=14, color='#64748b')
+                ),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor='#f1f5f9',
+                    title='Portfolio Value ($)',
+                    title_font=dict(size=14, color='#64748b')
+                ),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                    font=dict(size=12)
+                ),
+                margin=dict(l=60, r=40, t=40, b=60)
             )
             
             st.plotly_chart(fig, use_container_width=True)
@@ -966,6 +1025,7 @@ else:  # Portfolio Manager
             
             # Rebalance Analysis
             st.markdown("### ⚖️ Rebalance Analysis")
+            st.caption("Review asset allocation drift and required trades to restore target percentages")
             
             rows = []
             total_turnover = 0
@@ -1032,6 +1092,7 @@ else:  # Portfolio Manager
             
             with col_exec1:
                 st.markdown("### 🚀 Execute Rebalance")
+                st.caption("Adjust portfolio units to match target allocation")
                 
                 if needs_rebalance:
                     st.warning("⚠️ **Rebalancing recommended**")
