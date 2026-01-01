@@ -460,7 +460,7 @@ with st.sidebar:
             st.rerun()
         
         if prof.get('benchmark'):
-            st.caption(f"📊 Active: {prof['benchmark']} will appear on chart")
+            st.caption(f"📊 Active: {prof['benchmark']} - Shows 100% investment comparison")
         else:
             st.caption("No benchmark selected")
         
@@ -843,6 +843,34 @@ else:  # Portfolio Manager
     st.title(f"{p_flag} {st.session_state.active_profile}")
     st.caption(f"Portfolio Manager • Inception: {prof.get('start_date', 'N/A')} • Drift Tolerance: {prof.get('drift_tolerance', 5.0)}%")
     
+    # Portfolio Summary at top
+    has_rebalanced = prof.get("last_rebalanced") is not None
+    recently_rebalanced = check_recently_rebalanced(prof.get("last_rebalanced"))
+    
+    col_sum1, col_sum2, col_sum3, col_sum4 = st.columns(4)
+    with col_sum1:
+        asset_count = len(prof.get("assets", {}))
+        st.metric("Total Assets", asset_count)
+    with col_sum2:
+        prof_start = datetime.strptime(prof.get('start_date', str(date.today())), '%Y-%m-%d')
+        age_years = max((date.today() - prof_start.date()).days / 365.25, 0.01)
+        st.metric("Portfolio Age", f"{age_years:.1f} years")
+    with col_sum3:
+        if prof.get("last_rebalanced"):
+            st.metric("Last Rebalanced", prof["last_rebalanced"][:10])
+        else:
+            st.metric("Last Rebalanced", "Never")
+    with col_sum4:
+        if has_rebalanced:
+            if recently_rebalanced:
+                st.metric("Status", "✅ Balanced", delta="Optimized", delta_color="normal")
+            else:
+                st.metric("Status", "Active", delta="Monitoring", delta_color="off")
+        else:
+            st.metric("Status", "⚪ New", delta="Not rebalanced", delta_color="off")
+    
+    st.divider()
+    
     asset_dict = prof.get("assets", {})
     tickers = list(asset_dict.keys())
     
@@ -1024,7 +1052,7 @@ else:  # Portfolio Manager
             
             # Performance Chart
             st.markdown("### 📈 Performance vs Goal Path")
-            benchmark_caption = f" & {prof.get('benchmark', '')}" if prof.get('benchmark') else ""
+            benchmark_caption = f" & 100% {prof.get('benchmark', '')}" if prof.get('benchmark') else ""
             st.caption(f"Track your portfolio's actual performance against your target growth trajectory{benchmark_caption}")
             
             fig = go.Figure()
@@ -1059,28 +1087,42 @@ else:  # Portfolio Manager
                              '<extra></extra>'
             ))
             
-            # Benchmark
+            # Benchmark comparison (100% invested in benchmark)
             benchmark_ticker = prof.get('benchmark')
+            benchmark_comparison_msg = None
+            
             if benchmark_ticker:
                 try:
                     benchmark_raw = yf.download(benchmark_ticker, start=prof["start_date"], auto_adjust=True, progress=False)
                     if not benchmark_raw.empty:
                         benchmark_data = benchmark_raw['Close']
+                        
+                        # Show what would happen if 100% was invested in benchmark
                         benchmark_normalized = (benchmark_data / float(benchmark_data.iloc[0])) * start_val
                         bench_return = ((float(benchmark_normalized.iloc[-1]) / start_val) - 1) * 100
+                        bench_final_value = float(benchmark_normalized.iloc[-1])
                         
                         fig.add_trace(go.Scatter(
                             x=benchmark_data.index,
                             y=benchmark_normalized,
-                            name=f'Benchmark: {benchmark_ticker} ({bench_return:+.1f}%)',
+                            name=f'100% in {benchmark_ticker} ({bench_return:+.1f}%)',
                             line=dict(color='#f59e0b', width=2, dash='dot'),
                             hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br>' +
-                                         '<b>Benchmark Value:</b> $%{y:,.2f}<br>' +
-                                         f'<b>Index:</b> {benchmark_ticker}<br>' +
-                                         f'<b>Return:</b> {bench_return:+.1f}%<br>' +
+                                         '<b>Value if 100% in Benchmark:</b> $%{y:,.2f}<br>' +
+                                         f'<b>Benchmark:</b> {benchmark_ticker}<br>' +
+                                         f'<b>Total Return:</b> {bench_return:+.1f}%<br>' +
                                          '<extra></extra>'
                         ))
-                except:
+                        
+                        # Prepare comparison message
+                        portfolio_vs_bench = curr_v - bench_final_value
+                        if portfolio_vs_bench > 0:
+                            benchmark_comparison_msg = ("success", f"📊 Your portfolio outperformed {benchmark_ticker} by ${portfolio_vs_bench:,.0f} ({((curr_v/bench_final_value - 1)*100):+.1f}%)")
+                        else:
+                            benchmark_comparison_msg = ("info", f"📊 {benchmark_ticker} outperformed your portfolio by ${abs(portfolio_vs_bench):,.0f} ({((bench_final_value/curr_v - 1)*100):+.1f}%)")
+                    else:
+                        st.caption(f"⚠️ No benchmark data available for {benchmark_ticker}")
+                except Exception as e:
                     st.caption(f"⚠️ Could not load benchmark {benchmark_ticker}")
             
             fig.update_layout(
@@ -1117,6 +1159,14 @@ else:  # Portfolio Manager
             )
             
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Show benchmark comparison if available
+            if benchmark_comparison_msg:
+                msg_type, msg_text = benchmark_comparison_msg
+                if msg_type == "success":
+                    st.success(msg_text)
+                else:
+                    st.info(msg_text)
             
             st.divider()
             
@@ -1256,39 +1306,23 @@ else:  # Portfolio Manager
                 
                 if not needs_rebalance:
                     st.info("✓ Portfolio is optimally balanced")
-                
-                st.markdown("#### 📊 Rebalance History")
-                total_events = len(prof.get('rebalance_stats', []))
-                st.caption(f"Showing last 10 of {total_events} events")
-                
-                for entry in prof.get("rebalance_stats", [])[:10]:
-                    st.caption(entry)
-                
-                if total_events > 10:
-                    with st.expander(f"📜 Show {total_events - 10} More Events"):
-                        for entry in prof.get("rebalance_stats", [])[10:30]:
-                            st.caption(entry)
             
             with col_exec2:
-                st.markdown("### 📈 Portfolio Summary")
-                st.caption("Key portfolio metrics and optimization status")
-                st.metric("Total Assets", len(v_t))
-                st.metric("Portfolio Age", f"{prof_years:.1f} years")
+                st.markdown("### 📊 Rebalance History Details")
+                st.caption("Detailed log of past rebalancing events")
                 
-                if prof.get("last_rebalanced"):
-                    last_rebal_date = prof["last_rebalanced"][:10]
-                    st.metric("Last Rebalanced", last_rebal_date)
+                total_events = len(prof.get('rebalance_stats', []))
+                if total_events > 0:
+                    st.caption(f"Total events: {total_events}")
+                    for entry in prof.get("rebalance_stats", [])[:10]:
+                        st.caption(entry)
                     
-                    if recently_rebalanced:
-                        st.success("✅ **Status: Balanced**")
-                        st.caption("Portfolio optimized within 24 hours")
-                    elif not needs_rebalance:
-                        st.success("✅ **Status: Balanced**")
-                        st.caption("All assets within drift tolerance")
-                    else:
-                        st.warning("⚠️ **Rebalancing needed**")
+                    if total_events > 10:
+                        with st.expander(f"📜 Show {total_events - 10} More Events"):
+                            for entry in prof.get("rebalance_stats", [])[10:30]:
+                                st.caption(entry)
                 else:
-                    st.info("⚪ Not yet rebalanced")
+                    st.info("No rebalancing history yet")
                 
                 st.divider()
                 
