@@ -903,11 +903,111 @@ else:  # Portfolio Manager
             if len(v_t) < len(tickers):
                 missing = set(tickers) - set(v_t)
                 st.warning(f"⚠️ Could not load data for: {', '.join(missing)}")
-        
-        except Exception as e:
-            st.error(f"❌ Error fetching market data: {str(e)}")
-            st.info("💡 Please check your internet connection and verify all ticker symbols are valid.")
-            st.stop()
+            
+            # Calculate daily portfolio value
+            daily_val = data[v_t].apply(
+                lambda r: sum(r[t] * asset_dict[t]["units"] for t in v_t if t in r.index),
+                axis=1
+            )
+            
+            curr_v = float(daily_val.iloc[-1])
+            start_val = float(prof['principal'])
+            
+            # Calculate time-based metrics
+            years = max((data.index[-1] - data.index[0]).days / 365.25, 0.01)
+            target_val = start_val * (1 + (float(prof['yearly_goal_pct'])/100))**years
+            perc_diff = ((curr_v / target_val) - 1) * 100
+            roi_pct = ((curr_v / start_val) - 1) * 100
+            
+            # DRIFT DETECTION
+            needs_rebalance = False
+            drift_assets = []
+            
+            # Check if recently rebalanced (within last 24 hours) - gives grace period for price movements
+            recently_rebalanced = False
+            if prof.get("last_rebalanced"):
+                try:
+                    last_rebal_time = datetime.strptime(prof.get("last_rebalanced"), "%Y-%m-%d %H:%M:%S")
+                    hours_since_rebalance = (datetime.now() - last_rebal_time).total_seconds() / 3600
+                    recently_rebalanced = hours_since_rebalance < 24
+                except:
+                    pass
+            
+            # Only check drift if not recently rebalanced
+            if not recently_rebalanced:
+                for t in v_t:
+                    actual_pct = float((asset_dict[t]["units"] * data[t].iloc[-1] / curr_v * 100))
+                    target_pct = float(asset_dict[t]["target"])
+                    drift = float(abs(actual_pct - target_pct))
+                    
+                    if drift >= prof.get("drift_tolerance", 5.0):
+                        needs_rebalance = True
+                        drift_assets.append((t, drift, actual_pct, target_pct))
+            
+            # DRIFT ALERT BANNER
+            if needs_rebalance:
+                st.markdown("""
+                    <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); 
+                                border: 4px solid #ef4444; border-radius: 16px; padding: 28px; 
+                                margin-bottom: 28px; animation: pulse-alert 2s infinite;">
+                        <h2 style="color: #991b1b; margin: 0 0 16px 0; font-size: 1.8rem;">
+                            🚨 DRIFT ALERT: Immediate Rebalancing Required
+                        </h2>
+                        <p style="color: #7f1d1d; font-size: 1.2rem; margin: 0; line-height: 1.6;">
+                            <strong>{0} asset(s)</strong> have exceeded your <strong>{1}% drift tolerance</strong>.<br>
+                            Your portfolio allocation has shifted significantly. Review the analysis below and execute rebalancing.
+                        </p>
+                    </div>
+                    <style>
+                    @keyframes pulse-alert {{
+                        0%, 100% {{ transform: scale(1); }}
+                        50% {{ transform: scale(1.01); }}
+                    }}
+                    </style>
+                """.format(len(drift_assets), prof.get('drift_tolerance', 5.0)), unsafe_allow_html=True)
+                
+                # Drift details
+                st.markdown("#### 📊 Assets Requiring Rebalancing:")
+                for ticker, drift, actual, target in drift_assets:
+                    col1, col2, col3 = st.columns([2, 2, 2])
+                    with col1:
+                        st.markdown(f"**{ticker}**")
+                    with col2:
+                        st.markdown(f"Drift: **{drift:.2f}%** ⚠️")
+                    with col3:
+                        st.markdown(f"Current: **{actual:.1f}%** (Target: {target:.1f}%)")
+                
+                st.divider()
+            
+            # Determine status badge - consistent with global dashboard
+            has_rebalanced = prof.get("last_rebalanced") is not None
+            has_assets = len(asset_dict) > 0
+            
+            if not has_rebalanced and has_assets:
+                # Profile has assets but never rebalanced - show blinking rebalance required
+                alert_html = '<span class="drift-badge">🚨 REBALANCE REQUIRED</span>'
+            elif not has_rebalanced:
+                # Profile has no assets yet
+                alert_html = '<span style="background: #94a3b8; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">⚪ Not Rebalanced</span>'
+            elif recently_rebalanced:
+                # Recently rebalanced - show green balanced status (24 hour grace period)
+                alert_html = '<span class="success-badge">✅ Balanced</span>'
+            elif needs_rebalance:
+                # Profile rebalanced before but now has drift - show blinking rebalance required
+                alert_html = '<span class="drift-badge">🚨 REBALANCE REQUIRED</span>'
+            else:
+                # Profile is optimized - green status, no drift detected
+                alert_html = '<span class="success-badge">✅ Balanced</span>'
+            
+            # Header Stats
+            st.markdown(f"""
+                <div class="premium-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h2 style="margin:0;">Portfolio Analytics</h2>
+                        {alert_html}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
             
             # Calculate daily portfolio value
             daily_val = data[v_t].apply(
