@@ -256,7 +256,7 @@ def load_db():
 
 def save_db(data):
     with open(DB_FILE, "w") as f:
-        json.dump(f, f, indent=2)
+        json.dump(data, f, indent=2)
 
 def log_profile(prof, message):
     prof.setdefault("rebalance_logs", [])
