@@ -423,6 +423,12 @@ with st.sidebar:
             st.success("✅ Benchmark saved!")
             st.rerun()
         
+        # Show current benchmark status
+        if prof.get('benchmark'):
+            st.caption(f"📊 Active: {prof['benchmark']} will appear on chart")
+        else:
+            st.caption("No benchmark selected")
+        
         st.divider()
         
         # ===== ASSET ALLOCATION - NOW IN SIDEBAR =====
@@ -666,12 +672,22 @@ if view_mode == "🏠 Global Dashboard":
             has_rebalanced = p_data.get("last_rebalanced") is not None
             has_assets = len(p_assets) > 0
             
-            # Count as needing rebalance if: (1) never rebalanced with assets OR (2) has drift after rebalancing
+            # Check if recently rebalanced (24 hour grace period)
+            recently_rebalanced = False
+            if has_rebalanced:
+                try:
+                    last_rebal_time = datetime.strptime(p_data.get("last_rebalanced"), "%Y-%m-%d %H:%M:%S")
+                    hours_since_rebalance = (datetime.now() - last_rebal_time).total_seconds() / 3600
+                    recently_rebalanced = hours_since_rebalance < 24
+                except:
+                    pass
+            
+            # Count as needing rebalance if: (1) never rebalanced with assets OR (2) has drift after rebalancing (not recently rebalanced)
             if not has_rebalanced and has_assets:
                 # Never rebalanced but has assets - needs rebalance
                 total_drift_count += 1
-            elif has_rebalanced and curr_v > 0:
-                # Check for actual drift only if previously rebalanced
+            elif has_rebalanced and curr_v > 0 and not recently_rebalanced:
+                # Check for actual drift only if previously rebalanced and not in grace period
                 for t in p_assets:
                     actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
                     target_pct = float(p_assets[t]["target"])
@@ -722,10 +738,21 @@ if view_mode == "🏠 Global Dashboard":
             # Check if profile has been rebalanced
             has_rebalanced = p_data.get("last_rebalanced") is not None
             
-            # Check for drift
+            # Check for drift (with grace period for recently rebalanced portfolios)
             has_drift = False
             drift_details = []
-            if curr_v > 0 and has_rebalanced:
+            
+            # Check if recently rebalanced (within last 24 hours)
+            recently_rebalanced = False
+            if has_rebalanced:
+                try:
+                    last_rebal_time = datetime.strptime(p_data.get("last_rebalanced"), "%Y-%m-%d %H:%M:%S")
+                    hours_since_rebalance = (datetime.now() - last_rebal_time).total_seconds() / 3600
+                    recently_rebalanced = hours_since_rebalance < 24
+                except:
+                    pass
+            
+            if curr_v > 0 and has_rebalanced and not recently_rebalanced:
                 for t in p_assets:
                     actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
                     target_pct = float(p_assets[t]["target"])
@@ -867,14 +894,26 @@ else:  # Portfolio Manager
             needs_rebalance = False
             drift_assets = []
             
-            for t in v_t:
-                actual_pct = float((asset_dict[t]["units"] * data[t].iloc[-1] / curr_v * 100))
-                target_pct = float(asset_dict[t]["target"])
-                drift = float(abs(actual_pct - target_pct))
-                
-                if drift >= prof.get("drift_tolerance", 5.0):
-                    needs_rebalance = True
-                    drift_assets.append((t, drift, actual_pct, target_pct))
+            # Check if recently rebalanced (within last 24 hours) - gives grace period for price movements
+            recently_rebalanced = False
+            if prof.get("last_rebalanced"):
+                try:
+                    last_rebal_time = datetime.strptime(prof.get("last_rebalanced"), "%Y-%m-%d %H:%M:%S")
+                    hours_since_rebalance = (datetime.now() - last_rebal_time).total_seconds() / 3600
+                    recently_rebalanced = hours_since_rebalance < 24
+                except:
+                    pass
+            
+            # Only check drift if not recently rebalanced
+            if not recently_rebalanced:
+                for t in v_t:
+                    actual_pct = float((asset_dict[t]["units"] * data[t].iloc[-1] / curr_v * 100))
+                    target_pct = float(asset_dict[t]["target"])
+                    drift = float(abs(actual_pct - target_pct))
+                    
+                    if drift >= prof.get("drift_tolerance", 5.0):
+                        needs_rebalance = True
+                        drift_assets.append((t, drift, actual_pct, target_pct))
             
             # DRIFT ALERT BANNER
             if needs_rebalance:
@@ -921,12 +960,15 @@ else:  # Portfolio Manager
             elif not has_rebalanced:
                 # Profile has no assets yet
                 alert_html = '<span style="background: #94a3b8; color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">⚪ Not Rebalanced</span>'
+            elif recently_rebalanced:
+                # Recently rebalanced - show green balanced status (24 hour grace period)
+                alert_html = '<span class="success-badge">✅ Balanced</span>'
             elif needs_rebalance:
                 # Profile rebalanced before but now has drift - show blinking rebalance required
                 alert_html = '<span class="drift-badge">🚨 REBALANCE REQUIRED</span>'
             else:
-                # Profile is optimized - green status after rebalance execution
-                alert_html = '<span class="success-badge">✅ Optimized</span>'
+                # Profile is optimized - green status, no drift detected
+                alert_html = '<span class="success-badge">✅ Balanced</span>'
             
             st.markdown(f"""
                 <div class="premium-card">
@@ -995,7 +1037,8 @@ else:  # Portfolio Manager
             
             # Performance Chart
             st.markdown("### 📈 Performance vs Goal Path")
-            st.caption("Track your portfolio's actual performance against your target growth trajectory")
+            benchmark_caption = f" & {prof.get('benchmark', '')}" if prof.get('benchmark') else ""
+            st.caption(f"Track your portfolio's actual performance against your target growth trajectory{benchmark_caption}")
             
             fig = go.Figure()
             
@@ -1031,23 +1074,30 @@ else:  # Portfolio Manager
             benchmark_ticker = prof.get('benchmark')
             if benchmark_ticker:
                 try:
-                    benchmark_data = yf.download(benchmark_ticker, start=prof["start_date"], auto_adjust=True, progress=False)['Close']
-                    if not benchmark_data.empty:
-                        # Normalize benchmark to start at same value as portfolio
-                        benchmark_normalized = (benchmark_data / benchmark_data.iloc[0]) * start_val
-                        
-                        fig.add_trace(go.Scatter(
-                            x=benchmark_data.index,
-                            y=benchmark_normalized,
-                            name=f'Benchmark ({benchmark_ticker})',
-                            line=dict(color='#f59e0b', width=2, dash='dot'),
-                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br>' +
-                                         '<b>Benchmark Value:</b> $%{y:,.2f}<br>' +
-                                         f'<b>Index:</b> {benchmark_ticker}<br>' +
-                                         '<extra></extra>'
-                        ))
-                except:
-                    pass
+                    with st.spinner(f"Loading benchmark {benchmark_ticker}..."):
+                        benchmark_raw = yf.download(benchmark_ticker, start=prof["start_date"], auto_adjust=True, progress=False)
+                        if not benchmark_raw.empty:
+                            benchmark_data = benchmark_raw['Close']
+                            
+                            # Normalize benchmark to start at same value as portfolio
+                            benchmark_normalized = (benchmark_data / benchmark_data.iloc[0]) * start_val
+                            
+                            # Calculate benchmark return
+                            bench_return = ((benchmark_normalized.iloc[-1] / start_val) - 1) * 100
+                            
+                            fig.add_trace(go.Scatter(
+                                x=benchmark_data.index,
+                                y=benchmark_normalized,
+                                name=f'Benchmark: {benchmark_ticker} ({bench_return:+.1f}%)',
+                                line=dict(color='#f59e0b', width=2, dash='dot'),
+                                hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br>' +
+                                             '<b>Benchmark Value:</b> $%{y:,.2f}<br>' +
+                                             f'<b>Index:</b> {benchmark_ticker}<br>' +
+                                             f'<b>Return:</b> {bench_return:+.1f}%<br>' +
+                                             '<extra></extra>'
+                            ))
+                except Exception as e:
+                    st.warning(f"Could not load benchmark {benchmark_ticker}: {str(e)}")
             
             fig.update_layout(
                 hovermode='x unified',
