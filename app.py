@@ -253,6 +253,7 @@ def load_db():
                     p.setdefault("drift_tolerance", 5.0)
                     p.setdefault("rebalance_stats", [])
                     p.setdefault("last_rebalanced", None)
+                    p.setdefault("benchmark", None)  # Add benchmark support
                 return data
             except: 
                 return base_schema
@@ -326,7 +327,8 @@ with st.sidebar:
                         "rebalance_logs": [],
                         "drift_tolerance": 5.0,
                         "rebalance_stats": [],
-                        "last_rebalanced": None
+                        "last_rebalanced": None,
+                        "benchmark": None
                     }
                     save_db(st.session_state.db)
                     log_profile(st.session_state.db["profiles"][n_name], "Profile created")
@@ -383,6 +385,42 @@ with st.sidebar:
             save_db(st.session_state.db)
             log_profile(prof, f"Updated drift tolerance to {new_tolerance}%")
             st.success("✅ Updated!")
+            st.rerun()
+        
+        st.divider()
+        
+        # Benchmark Selection
+        st.markdown("### 📊 Benchmark Comparison")
+        st.caption("Compare your portfolio against market benchmarks")
+        
+        benchmark_options = {
+            "None": None,
+            "S&P 500 (SPY)": "SPY",
+            "NASDAQ-100 (QQQ)": "QQQ",
+            "Total Market (VTI)": "VTI",
+            "Russell 2000 (IWM)": "IWM",
+            "Dow Jones (DIA)": "DIA"
+        }
+        
+        # Find current benchmark index
+        current_benchmark = prof.get('benchmark')
+        benchmark_index = 0
+        for idx, (key, value) in enumerate(benchmark_options.items()):
+            if value == current_benchmark:
+                benchmark_index = idx
+                break
+        
+        selected_benchmark = st.selectbox(
+            "Select Benchmark",
+            options=list(benchmark_options.keys()),
+            index=benchmark_index,
+            key="benchmark_select"
+        )
+        
+        if st.button("💾 Save Benchmark", use_container_width=True, key="save_benchmark"):
+            prof['benchmark'] = benchmark_options[selected_benchmark]
+            save_db(st.session_state.db)
+            st.success("✅ Benchmark saved!")
             st.rerun()
         
         st.divider()
@@ -624,19 +662,22 @@ if view_mode == "🏠 Global Dashboard":
             curr_v = float(sum(p_assets[t]["units"] * prices.get(t, 0) for t in p_assets))
             total_value += curr_v
             
-            # Check if rebalance required: never rebalanced with assets OR has drift after rebalancing
+            # Check if rebalance required
             has_rebalanced = p_data.get("last_rebalanced") is not None
             has_assets = len(p_assets) > 0
             
-            if (not has_rebalanced and has_assets) or (has_rebalanced and curr_v > 0):
-                # Check for drift if has assets
-                if curr_v > 0:
-                    for t in p_assets:
-                        actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
-                        target_pct = float(p_assets[t]["target"])
-                        if (not has_rebalanced) or (abs(actual_pct - target_pct) >= p_data.get("drift_tolerance", 5.0)):
-                            total_drift_count += 1
-                            break
+            # Count as needing rebalance if: (1) never rebalanced with assets OR (2) has drift after rebalancing
+            if not has_rebalanced and has_assets:
+                # Never rebalanced but has assets - needs rebalance
+                total_drift_count += 1
+            elif has_rebalanced and curr_v > 0:
+                # Check for actual drift only if previously rebalanced
+                for t in p_assets:
+                    actual_pct = float((p_assets[t]["units"] * prices.get(t, 0) / curr_v * 100))
+                    target_pct = float(p_assets[t]["target"])
+                    if abs(actual_pct - target_pct) >= p_data.get("drift_tolerance", 5.0):
+                        total_drift_count += 1
+                        break
         
         # Top Metrics
         col_m1, col_m2, col_m3 = st.columns(3)
@@ -985,6 +1026,28 @@ else:  # Portfolio Manager
                              f'<b>Goal Rate:</b> {prof["yearly_goal_pct"]}% annually<br>' +
                              '<extra></extra>'
             ))
+            
+            # Add benchmark if selected
+            benchmark_ticker = prof.get('benchmark')
+            if benchmark_ticker:
+                try:
+                    benchmark_data = yf.download(benchmark_ticker, start=prof["start_date"], auto_adjust=True, progress=False)['Close']
+                    if not benchmark_data.empty:
+                        # Normalize benchmark to start at same value as portfolio
+                        benchmark_normalized = (benchmark_data / benchmark_data.iloc[0]) * start_val
+                        
+                        fig.add_trace(go.Scatter(
+                            x=benchmark_data.index,
+                            y=benchmark_normalized,
+                            name=f'Benchmark ({benchmark_ticker})',
+                            line=dict(color='#f59e0b', width=2, dash='dot'),
+                            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br>' +
+                                         '<b>Benchmark Value:</b> $%{y:,.2f}<br>' +
+                                         f'<b>Index:</b> {benchmark_ticker}<br>' +
+                                         '<extra></extra>'
+                        ))
+                except:
+                    pass
             
             fig.update_layout(
                 hovermode='x unified',
