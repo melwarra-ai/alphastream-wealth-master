@@ -175,7 +175,7 @@ def is_year_optimized(year_data):
 # --- 3. CONFIGURATION & STYLING ---
 st.set_page_config(
     page_title="Tax & Wealth Velocity Suite",
-    page_icon="🏦",
+    page_icon="ðŸ¦",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -326,7 +326,7 @@ all_history = load_all_data()
 
 # --- 5. PAGE: HOME ---
 if st.session_state.current_page == "Home":
-    st.title("🏦 Canadian Tax & Wealth Velocity Suite")
+    st.title("ðŸ¦ Canadian Tax & Wealth Velocity Suite")
     
     description_box(
         "Strategic Financial Command Center",
@@ -341,7 +341,7 @@ if st.session_state.current_page == "Home":
     
     # Global Net Worth Summary
     if all_history:
-        st.markdown("### 💎 Global Wealth Summary")
+        st.markdown("### ðŸ’Ž Global Wealth Summary")
         
         description_box(
             "Portfolio Overview",
@@ -403,19 +403,19 @@ if st.session_state.current_page == "Home":
     is_optimized = taxable_income < penthouse_threshold
     
     # Header
-    st.title(f"🏛️ Tax Optimization Strategy: {selected_year}")
+    st.title(f"ðŸ›ï¸ Tax Optimization Strategy: {selected_year}")
     
     # Show deadline alert at the top
     deadline_date, deadline_formatted, days_until = get_rrsp_deadline(selected_year)
     
     if days_until < 0:
-        st.error(f"🔴 **DEADLINE PASSED**: The RRSP contribution deadline for {selected_year} was {deadline_formatted}. "
+        st.error(f"ðŸ”´ **DEADLINE PASSED**: The RRSP contribution deadline for {selected_year} was {deadline_formatted}. "
                 f"Any contributions made now will apply to tax year {selected_year + 1}.")
     elif days_until <= 30:
-        st.warning(f"🟠 **URGENT**: Only {days_until} days until the RRSP deadline ({deadline_formatted})! "
+        st.warning(f"ðŸŸ  **URGENT**: Only {days_until} days until the RRSP deadline ({deadline_formatted})! "
                   f"Complete your contributions for {selected_year} immediately.")
     elif days_until <= 90:
-        st.info(f"🟡 **UPCOMING**: {days_until} days until the RRSP deadline ({deadline_formatted}). "
+        st.info(f"ðŸŸ¡ **UPCOMING**: {days_until} days until the RRSP deadline ({deadline_formatted}). "
                f"Start planning your {selected_year} contributions.")
     
     # Status Card
@@ -431,11 +431,11 @@ if st.session_state.current_page == "Home":
     # Portfolio Growth Dashboard
     if rrsp_balance_start > 0 or tfsa_balance_start > 0 or annual_rrsp_periodic > 0:
         st.divider()
-        st.markdown("### 💼 Portfolio Growth Tracker")
+        st.markdown("### ðŸ’¼ Portfolio Growth Tracker")
         
         # Show RRSP contribution breakdown
         if annual_rrsp_periodic > 0:
-            st.markdown("#### 🎯 RRSP Contribution Breakdown")
+            st.markdown("#### ðŸŽ¯ RRSP Contribution Breakdown")
             col_breakdown1, col_breakdown2, col_breakdown3 = st.columns(3)
             
             with col_breakdown1:
@@ -544,7 +544,7 @@ if st.session_state.current_page == "Home":
     st.divider()
     
     # Tax Building Visualizer
-    st.markdown("### 🏢 Tax Building Visualizer")
+    st.markdown("### ðŸ¢ Tax Building Visualizer")
     
     description_box(
         "Income Distribution Across Tax Brackets",
@@ -624,12 +624,12 @@ if st.session_state.current_page == "Home":
     st.divider()
     
     # Strategic Prioritization
-    st.markdown("### 🎯 Strategic Prioritization Matrix")
+    st.markdown("### ðŸŽ¯ Strategic Prioritization Matrix")
     
     description_box(
         "Optimization Roadmap",
         f"**Goal**: Reduce taxable income below ${penthouse_threshold:,.0f} to avoid the Penthouse bracket (47.97% tax rate). "
-        f"Current status: {'✅ Optimized' if is_optimized else '⚠️ Needs Optimization'}"
+        f"Current status: {'âœ… Optimized' if is_optimized else 'âš ï¸ Needs Optimization'}"
     )
     
     # Calculate optimization metrics
@@ -640,7 +640,7 @@ if st.session_state.current_page == "Home":
     
     # Priority 1: Penthouse Shield
     if penthouse_income > 0:
-        priority_1_status = f"⚠️ ${penthouse_income:,.0f} in Penthouse"
+        priority_1_status = f"âš ï¸ ${penthouse_income:,.0f} in Penthouse"
         priority_1_action = f"Increase RRSP by ${penthouse_shield_needed:,.0f}"
         priority_1_impact = f"Save ${penthouse_income * 0.4797:,.0f} in taxes (47.97% rate)"
         priority_1_class = "priority-high"
@@ -651,14 +651,14 @@ if st.session_state.current_page == "Home":
         st.progress(optimization_progress)
         st.caption(f"{optimization_progress*100:.1f}% optimized - Need to reduce taxable income by ${penthouse_income:,.0f}")
     else:
-        priority_1_status = "✅ Optimized"
+        priority_1_status = "âœ… Optimized"
         priority_1_action = "No Penthouse exposure"
         priority_1_impact = f"Maximum efficiency at {marginal_rate*100:.2f}% bracket"
         priority_1_class = "priority-medium"
         
         st.markdown("**Optimization Progress:**")
         st.progress(1.0)
-        st.caption("✅ 100% optimized - Below Penthouse threshold!")
+        st.caption("âœ… 100% optimized - Below Penthouse threshold!")
     
     st.markdown(f'''
         <div class="premium-card {priority_1_class}">
@@ -682,7 +682,7 @@ if st.session_state.current_page == "Home":
     st.divider()
     
     # THE FEEDBACK LOOP - Tax Refund Reinvestment
-    st.markdown("### 🔄 The Feedback Loop: Refund Reinvestment")
+    st.markdown("### ðŸ”„ The Feedback Loop: Refund Reinvestment")
     
     description_box(
         "Strategic Refund Deployment",
@@ -716,7 +716,7 @@ if st.session_state.current_page == "Home":
         )
     
     # Refund deployment calculator
-    with st.expander("🧮 Refund Deployment Calculator", expanded=True):
+    with st.expander("ðŸ§® Refund Deployment Calculator", expanded=True):
         st.markdown("**Strategic Question:** How much of your tax refund will you reinvest into your TFSA?")
         
         if estimated_refund > 0:
@@ -753,31 +753,31 @@ if st.session_state.current_page == "Home":
                 st.write(f"- Future value @ 7%: ${future_value:,.0f}")
                 st.write(f"- Tax saved (vs. taxable): ${tax_saved_at_withdrawal:,.0f}")
         else:
-            st.info("💡 Make RRSP contributions to generate a tax refund that can be reinvested into your TFSA for tax-free growth.")
+            st.info("ðŸ’¡ Make RRSP contributions to generate a tax refund that can be reinvested into your TFSA for tax-free growth.")
     
     st.divider()
     
     # March 1st Deadline Dashboard
     deadline_date, deadline_formatted, days_until = get_rrsp_deadline(selected_year)
     
-    st.markdown(f"### 📅 RRSP Contribution Deadline for {selected_year}")
+    st.markdown(f"### ðŸ“… RRSP Contribution Deadline for {selected_year}")
     
     # Show deadline prominently
     col_deadline_info = st.columns([2, 1])
     with col_deadline_info[0]:
         st.markdown(f"""
             <div class="premium-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;">
-                <h3 style="margin-top: 0; color: #78350f;">⏰ Critical Deadline: {deadline_formatted}</h3>
+                <h3 style="margin-top: 0; color: #78350f;">â° Critical Deadline: {deadline_formatted}</h3>
                 <p style="font-size: 1.1em; color: #78350f;">
                     <strong>You have {days_until} days</strong> to make RRSP contributions that count for tax year {selected_year}.
                 </p>
                 <p style="color: #92400e; margin-bottom: 0;">
-                    ⚠️ Contributions made after this deadline will apply to tax year {selected_year + 1} instead.
+                    âš ï¸ Contributions made after this deadline will apply to tax year {selected_year + 1} instead.
                 </p>
             </div>
         """, unsafe_allow_html=True)
         
-        st.caption(f"💡 **Note**: This deadline is calculated based on CRA rules (March 1st or next business day if weekend). "
+        st.caption(f"ðŸ’¡ **Note**: This deadline is calculated based on CRA rules (March 1st or next business day if weekend). "
                   f"Always verify the exact deadline at [canada.ca/taxes](https://www.canada.ca/en/services/taxes.html) as exceptions may apply.")
     
     with col_deadline_info[1]:
@@ -785,19 +785,19 @@ if st.session_state.current_page == "Home":
         if days_until < 0:
             urgency_color = "#dc2626"
             urgency_text = "DEADLINE PASSED"
-            urgency_emoji = "🔴"
+            urgency_emoji = "ðŸ”´"
         elif days_until <= 30:
             urgency_color = "#ea580c"
             urgency_text = "URGENT"
-            urgency_emoji = "🟠"
+            urgency_emoji = "ðŸŸ "
         elif days_until <= 60:
             urgency_color = "#f59e0b"
             urgency_text = "APPROACHING"
-            urgency_emoji = "🟡"
+            urgency_emoji = "ðŸŸ¡"
         else:
             urgency_color = "#16a34a"
             urgency_text = "ON TRACK"
-            urgency_emoji = "🟢"
+            urgency_emoji = "ðŸŸ¢"
         
         st.markdown(f"""
             <div style="text-align: center; padding: 30px; background: white; border-radius: 12px; border: 3px solid {urgency_color};">
@@ -820,7 +820,7 @@ if st.session_state.current_page == "Home":
                 color: white; border: none; border-radius: 10px; font-weight: 600; 
                 cursor: pointer; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.4);
                 transition: all 0.3s ease;">
-                📄 Save as PDF
+                ðŸ“„ Save as PDF
             </button>
         ''', height=80)
     
@@ -877,7 +877,7 @@ if st.session_state.current_page == "Home":
     st.divider()
     
     # Carryover Room Projection
-    st.markdown(f"### ⏭️ {selected_year + 1} Carryover Room Projection")
+    st.markdown(f"### â­ï¸ {selected_year + 1} Carryover Room Projection")
     
     description_box(
         "Forward-Looking Planning",
@@ -922,9 +922,9 @@ if st.session_state.current_page == "Home":
     st.divider()
     
     # Tax Bracket Reference
-    st.markdown("### 📑 Ontario Tax Bracket Reference (Combined Federal + Provincial)")
+    st.markdown("### ðŸ“‘ Ontario Tax Bracket Reference (Combined Federal + Provincial)")
     
-    with st.expander("📊 View Detailed Bracket Information", expanded=False):
+    with st.expander("ðŸ“Š View Detailed Bracket Information", expanded=False):
         description_box(
             "2025/2026 Marginal Tax Rates",
             "These are the combined federal and Ontario provincial marginal tax rates. "
@@ -955,18 +955,18 @@ if st.session_state.current_page == "Home":
                 break
         
         if current_bracket and taxable_income > 0:
-            st.info(f"📍 Your current marginal bracket: **{current_bracket['name']}** at **{current_bracket['rate']*100:.2f}%**")
+            st.info(f"ðŸ“ Your current marginal bracket: **{current_bracket['name']}** at **{current_bracket['rate']*100:.2f}%**")
     
     # Strategic Insights
     st.divider()
-    st.markdown("### 💡 Strategic Insights & Recommendations")
+    st.markdown("### ðŸ’¡ Strategic Insights & Recommendations")
     
     insights = []
     
     # Insight 1: Penthouse exposure
     if penthouse_income > 0:
         insights.append({
-            "icon": "⚠️",
+            "icon": "âš ï¸",
             "title": "High Priority: Penthouse Exposure",
             "message": f"You have ${penthouse_income:,.0f} exposed to the Penthouse rate (47.97%). "
                       f"Consider depositing an additional ${penthouse_shield_needed:,.0f} to your RRSP before March 1st "
@@ -977,7 +977,7 @@ if st.session_state.current_page == "Home":
     # Insight 2: Unused RRSP room
     if remaining_rrsp_room > 10000:
         insights.append({
-            "icon": "💰",
+            "icon": "ðŸ’°",
             "title": "Opportunity: Unused RRSP Room",
             "message": f"You have ${remaining_rrsp_room:,.0f} of unused RRSP room. "
                       f"At your marginal rate of {marginal_rate*100:.2f}%, every additional $10,000 contributed "
@@ -988,7 +988,7 @@ if st.session_state.current_page == "Home":
     # Insight 3: TFSA optimization
     if remaining_tfsa_room > 5000:
         insights.append({
-            "icon": "🌱",
+            "icon": "ðŸŒ±",
             "title": "Growth Opportunity: TFSA Capacity",
             "message": f"You have ${remaining_tfsa_room:,.0f} of unused TFSA room. "
                       f"Consider deploying your ${estimated_refund:,.0f} tax refund into this tax-free growth vehicle. "
@@ -1005,7 +1005,7 @@ if st.session_state.current_page == "Home":
             if biweekly_pct >= employer_match_cap:
                 # Maximizing match - SUCCESS (Green)
                 insights.append({
-                    "icon": "✅",
+                    "icon": "âœ…",
                     "title": "Excellent: Maximizing Employer Match",
                     "message": f"You're contributing {biweekly_pct:.1f}% (${employee_contribution:,.0f}) and your employer is matching "
                               f"{employer_match_cap:.1f}% (${employer_contribution:,.0f}). You're getting the full match! "
@@ -1016,7 +1016,7 @@ if st.session_state.current_page == "Home":
                 # Not maximizing match - HIGH PRIORITY WARNING (Yellow)
                 missed_match = base_salary * (employer_match_cap - biweekly_pct) / 100
                 insights.append({
-                    "icon": "⚠️",
+                    "icon": "âš ï¸",
                     "title": "Opportunity: Not Maximizing Employer Match",
                     "message": f"You're contributing {biweekly_pct:.1f}% (${employee_contribution:,.0f}) but your employer will match up to "
                               f"{employer_match_cap:.1f}%. You're currently getting ${employer_contribution:,.0f} in employer match, "
@@ -1028,7 +1028,7 @@ if st.session_state.current_page == "Home":
             # Not contributing at all - CRITICAL (Yellow/Red)
             potential_match = base_salary * (employer_match_cap / 100)
             insights.append({
-                "icon": "🚨",
+                "icon": "ðŸš¨",
                 "title": "Critical: Missing 100% of Employer Match",
                 "message": f"Your employer offers to match up to {employer_match_cap:.1f}% of your base salary (${potential_match:,.0f} per year). "
                           f"You're currently contributing 0%, so you're leaving ALL of this free money on the table. "
@@ -1042,7 +1042,7 @@ if st.session_state.current_page == "Home":
     
     if efficiency_score < 0.5:
         insights.append({
-            "icon": "📈",
+            "icon": "ðŸ“ˆ",
             "title": "Efficiency Opportunity",
             "message": f"Your contribution room utilization is {efficiency_score*100:.1f}%. "
                       f"You're leaving significant tax advantages on the table. "
@@ -1051,7 +1051,7 @@ if st.session_state.current_page == "Home":
         })
     elif efficiency_score > 0.8:
         insights.append({
-            "icon": "✨",
+            "icon": "âœ¨",
             "title": "Excellent Optimization",
             "message": f"Your contribution room utilization is {efficiency_score*100:.1f}%. "
                       f"You're making excellent use of your available tax-advantaged space. "
@@ -1076,11 +1076,11 @@ if st.session_state.current_page == "Home":
         ''', unsafe_allow_html=True)
     
     if not insights:
-        st.success("✅ Your strategy is well-optimized! No critical action items identified.")
+        st.success("âœ… Your strategy is well-optimized! No critical action items identified.")
 
-# Footer
-st.divider()
-st.markdown("""
+    # Footer
+    st.divider()
+    st.markdown("""
     <div style="text-align: center; color: #64748b; padding: 20px;">
         <p><strong>Canadian Tax & Wealth Velocity Suite</strong></p>
         <p style="font-size: 0.9em;">
@@ -1095,14 +1095,14 @@ st.markdown("""
             Deadlines auto-calculated with weekend adjustment
         </p>
     </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     
     with col_status2:
         if is_optimized:
             st.markdown("""
                 <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
                      padding: 20px; border-radius: 12px; border: 2px solid #10b981; text-align: center;">
-                    <div style="font-size: 3em;">🟢</div>
+                    <div style="font-size: 3em;">ðŸŸ¢</div>
                     <div style="font-size: 1.2em; font-weight: 600; color: #065f46; margin-top: 10px;">
                         OPTIMIZED
                     </div>
@@ -1113,22 +1113,22 @@ st.markdown("""
             """, unsafe_allow_html=True)
     
     # Key Metrics Dashboard
-    st.markdown("### 📊 Strategic Overview")
+    st.markdown("### ðŸ“Š Strategic Overview")
     
     if other_income > 0:
-        st.info(f"💼 Income Breakdown: T4 ${t4_gross_income:,.0f} + Other ${other_income:,.0f} = Total ${total_gross_income:,.0f}")
+        st.info(f"ðŸ’¼ Income Breakdown: T4 ${t4_gross_income:,.0f} + Other ${other_income:,.0f} = Total ${total_gross_income:,.0f}")
     
     # Optimization Status Banner
     if is_optimized:
-        st.success(f"🟢 **OPTIMIZED** - Your taxable income (${taxable_income:,.0f}) is below the Penthouse threshold (${penthouse_threshold:,.0f}). This year will show GREEN on the home page.")
+        st.success(f"ðŸŸ¢ **OPTIMIZED** - Your taxable income (${taxable_income:,.0f}) is below the Penthouse threshold (${penthouse_threshold:,.0f}). This year will show GREEN on the home page.")
     else:
         deficit = taxable_income - penthouse_threshold
         additional_rrsp_needed = deficit
-        st.warning(f"🟠 **IN PROGRESS** - Your taxable income (${taxable_income:,.0f}) exceeds the Penthouse threshold by ${deficit:,.0f}. "
+        st.warning(f"ðŸŸ  **IN PROGRESS** - Your taxable income (${taxable_income:,.0f}) exceeds the Penthouse threshold by ${deficit:,.0f}. "
                   f"Add ${additional_rrsp_needed:,.0f} more to RRSP contributions to achieve GREEN optimization status and save ${deficit * 0.4797:,.0f} in taxes.")
         
         # Pending Items Checklist
-        st.markdown("### ✅ Pending Items to Reach Optimization")
+        st.markdown("### âœ… Pending Items to Reach Optimization")
         
         pending_items = []
         
@@ -1145,7 +1145,7 @@ st.markdown("""
         # Item 2: Room availability check
         if deficit > remaining_rrsp_room:
             pending_items.append({
-                "item": "⚠️ Insufficient RRSP Room",
+                "item": "âš ï¸ Insufficient RRSP Room",
                 "current": f"${remaining_rrsp_room:,.0f} available",
                 "target": f"${deficit:,.0f} needed",
                 "action": f"You need ${deficit - remaining_rrsp_room:,.0f} more RRSP room than available. Consider: (1) Verify your NOA room is correct, (2) Use spousal RRSP if married, (3) Accept partial optimization this year",
@@ -1163,7 +1163,7 @@ st.markdown("""
                     </div>
                 """, unsafe_allow_html=True)
         else:
-            st.success("✅ No pending items - year is optimized!")
+            st.success("âœ… No pending items - year is optimized!")
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
@@ -1206,35 +1206,35 @@ st.markdown("""
             delta=f"+{target_cagr*100:.1f}% target",
             help="Combined RRSP + TFSA projected end-of-year value"
         )
-        else:
-            st.markdown("""
-                <div style="background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); 
-                     padding: 20px; border-radius: 12px; border: 2px solid #f97316; text-align: center;">
-                    <div style="font-size: 3em;">🟠</div>
-                    <div style="font-size: 1.2em; font-weight: 600; color: #7c2d12; margin-top: 10px;">
-                        IN PROGRESS
-                    </div>
-                    <div style="font-size: 0.9em; color: #9a3412; margin-top: 5px;">
-                        More RRSP needed
-                    </div>
-                </div>
-            """, unsafe_allow_html=True) = latest_data.get("target_cagr", 7.0) / 100
-            rrsp_start = latest_data.get("rrsp_balance_start", 0)
-            tfsa_start = latest_data.get("tfsa_balance_start", 0)
-            
-            annual_rrsp = (latest_data.get('base_salary', 0) * 
-                          (latest_data.get('biweekly_pct', 0) + latest_data.get('employer_match', 0)) / 100) + \
-                          latest_data.get('rrsp_lump_sum_optimization', 0) + \
-                          latest_data.get('rrsp_lump_sum_additional', 0) + \
-                          latest_data.get('rrsp_lump_sum', 0)
-            tfsa_contrib = latest_data.get('tfsa_lump_sum', 0)
-            
-            rrsp_growth = rrsp_start * target_cagr + annual_rrsp * (target_cagr / 2)
-            tfsa_growth = tfsa_start * target_cagr + tfsa_contrib * (target_cagr / 2)
-            
-            latest_rrsp_balance = rrsp_start + rrsp_growth + annual_rrsp
-            latest_tfsa_balance = tfsa_start + tfsa_growth + tfsa_contrib
-        
+    #         else:  # FIXME: Corrupted code section - needs manual review
+    #             st.markdown("""  # FIXME: Corrupted code section - needs manual review
+    #                 <div style="background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);   # FIXME: Corrupted code section - needs manual review
+    #                      padding: 20px; border-radius: 12px; border: 2px solid #f97316; text-align: center;">  # FIXME: Corrupted code section - needs manual review
+    #                     <div style="font-size: 3em;">ðŸŸ </div>  # FIXME: Corrupted code section - needs manual review
+    #                     <div style="font-size: 1.2em; font-weight: 600; color: #7c2d12; margin-top: 10px;">  # FIXME: Corrupted code section - needs manual review
+    #                         IN PROGRESS  # FIXME: Corrupted code section - needs manual review
+    #                     </div>  # FIXME: Corrupted code section - needs manual review
+    #                     <div style="font-size: 0.9em; color: #9a3412; margin-top: 5px;">  # FIXME: Corrupted code section - needs manual review
+    #                         More RRSP needed  # FIXME: Corrupted code section - needs manual review
+    #                     </div>  # FIXME: Corrupted code section - needs manual review
+    #                 </div>  # FIXME: Corrupted code section - needs manual review
+    #             """, unsafe_allow_html=True) = latest_data.get("target_cagr", 7.0) / 100  # FIXME: Corrupted code section - needs manual review
+    #             rrsp_start = latest_data.get("rrsp_balance_start", 0)  # FIXME: Corrupted code section - needs manual review
+    #             tfsa_start = latest_data.get("tfsa_balance_start", 0)  # FIXME: Corrupted code section - needs manual review
+    #               # FIXME: Corrupted code section - needs manual review
+    #             annual_rrsp = (latest_data.get('base_salary', 0) *   # FIXME: Corrupted code section - needs manual review
+    #                           (latest_data.get('biweekly_pct', 0) + latest_data.get('employer_match', 0)) / 100) + \  # FIXME: Corrupted code section - needs manual review
+    #                           latest_data.get('rrsp_lump_sum_optimization', 0) + \  # FIXME: Corrupted code section - needs manual review
+    #                           latest_data.get('rrsp_lump_sum_additional', 0) + \  # FIXME: Corrupted code section - needs manual review
+    #                           latest_data.get('rrsp_lump_sum', 0)  # FIXME: Corrupted code section - needs manual review
+    #             tfsa_contrib = latest_data.get('tfsa_lump_sum', 0)  # FIXME: Corrupted code section - needs manual review
+    #               # FIXME: Corrupted code section - needs manual review
+    #             rrsp_growth = rrsp_start * target_cagr + annual_rrsp * (target_cagr / 2)  # FIXME: Corrupted code section - needs manual review
+    #             tfsa_growth = tfsa_start * target_cagr + tfsa_contrib * (target_cagr / 2)  # FIXME: Corrupted code section - needs manual review
+    #               # FIXME: Corrupted code section - needs manual review
+    #             latest_rrsp_balance = rrsp_start + rrsp_growth + annual_rrsp  # FIXME: Corrupted code section - needs manual review
+    #             latest_tfsa_balance = tfsa_start + tfsa_growth + tfsa_contrib  # FIXME: Corrupted code section - needs manual review
+    #           # FIXME: Corrupted code section - needs manual review
         col1, col2, col3, col4 = st.columns(4)
         
         latest_year = max(all_history.keys(), key=lambda x: int(x))
@@ -1273,29 +1273,29 @@ st.markdown("""
         
         # Detailed explanation for Global Wealth Summary
         st.markdown("---")
-        st.markdown("#### 📖 Understanding Your Global Wealth Summary")
+        st.markdown("#### ðŸ“– Understanding Your Global Wealth Summary")
         st.markdown(f"""
         This dashboard shows your complete retirement portfolio snapshot as of **December {latest_year}** (end of the most recent year you've planned):
         
-        **💰 Current RRSP Balance: ${latest_rrsp_balance:,.0f}**
+        **ðŸ’° Current RRSP Balance: ${latest_rrsp_balance:,.0f}**
         - This is your projected RRSP account value at the end of {latest_year}
         - Includes all contributions from all years you've tracked: ${total_rrsp_all:,.0f}
         - Includes compound investment growth based on your target CAGR settings
         - This money is tax-deferred (you'll pay tax when you withdraw in retirement)
         
-        **🌱 Current TFSA Balance: ${latest_tfsa_balance:,.0f}**
+        **ðŸŒ± Current TFSA Balance: ${latest_tfsa_balance:,.0f}**
         - This is your projected TFSA account value at the end of {latest_year}
         - Includes all contributions from all years you've tracked: ${total_tfsa_all:,.0f}
         - Includes compound investment growth based on your target CAGR settings
         - This money grows 100% tax-free (no tax when you withdraw, ever!)
         
-        **🛡️ Total Tax Shield Value: ${total_tax_shield:,.0f}**
+        **ðŸ›¡ï¸ Total Tax Shield Value: ${total_tax_shield:,.0f}**
         - This is the total amount of tax refunds you've generated through RRSP contributions
         - Every dollar you contribute to RRSP saves taxes at your marginal rate
         - Example: If you're in the 33.89% bracket, a $10,000 RRSP contribution saves $3,389 in taxes
         - This is "free money" from the government that you can reinvest (ideally into TFSA)
         
-        **💎 Total Portfolio Value: ${total_portfolio_value:,.0f}**
+        **ðŸ’Ž Total Portfolio Value: ${total_portfolio_value:,.0f}**
         - This is your combined RRSP + TFSA wealth: ${latest_rrsp_balance:,.0f} + ${latest_tfsa_balance:,.0f}
         - You've contributed a total of ${total_contributions:,.0f} across all years
         - Your investments have grown by ${total_investment_growth:,.0f} ({growth_rate_pct:.1f}% return on your contributions)
@@ -1306,7 +1306,7 @@ st.markdown("""
         st.divider()
         
         # Multi-Year Portfolio Growth Chart
-        st.markdown("### 📈 Portfolio Growth Over Time")
+        st.markdown("### ðŸ“ˆ Portfolio Growth Over Time")
         
         description_box(
             "Wealth Trajectory Visualization",
@@ -1386,32 +1386,32 @@ st.markdown("""
             st.altair_chart(portfolio_chart, use_container_width=True)
             
             st.markdown("---")
-            st.markdown("#### 📖 How to Read Your Portfolio Growth Chart")
+            st.markdown("#### ðŸ“– How to Read Your Portfolio Growth Chart")
             st.markdown("""
             This stacked area chart shows how your retirement portfolio has grown over time. Here's what you're seeing:
             
-            **📊 The Colored Areas:**
+            **ðŸ“Š The Colored Areas:**
             - **Blue area (bottom)**: Your RRSP account balance over time
             - **Green area (top)**: Your TFSA account balance stacked on top
             - **Total height**: Your complete portfolio value (RRSP + TFSA combined)
             
-            **📅 The Timeline (X-Axis):**
+            **ðŸ“… The Timeline (X-Axis):**
             - Each year appears TWICE: once for January (start of year) and once for December (end of year)
             - **January markers**: Show your portfolio value on January 1st, before making any new contributions that year
             - **December markers**: Show your portfolio value on December 31st, after all contributions and investment growth
             
-            **📈 What the Growth Represents:**
-            - **Vertical jumps from Jan → Dec**: This is your contributions PLUS investment returns for that year
-            - **Vertical jumps from Dec → next Jan**: Usually flat (representing year rollover)
+            **ðŸ“ˆ What the Growth Represents:**
+            - **Vertical jumps from Jan â†’ Dec**: This is your contributions PLUS investment returns for that year
+            - **Vertical jumps from Dec â†’ next Jan**: Usually flat (representing year rollover)
             - **Overall upward slope**: Shows your wealth-building momentum over multiple years
             
-            **💡 Key Insights to Look For:**
+            **ðŸ’¡ Key Insights to Look For:**
             1. **Steeper slopes** = faster wealth accumulation (higher contributions or better returns)
             2. **Blue getting bigger** = RRSP growing (tax-deferred, good for retirement)
             3. **Green getting bigger** = TFSA growing (tax-free, good for any goal)
             4. **Consistent pattern** = disciplined, systematic saving (the best path to wealth)
             
-            **🎯 Example Reading:**
+            **ðŸŽ¯ Example Reading:**
             - If you see a big jump from 2025 Dec to 2026 Dec, that means you made significant contributions in 2026 AND/OR had strong investment returns
             - If the chart is mostly blue, you're focusing on tax-deferred RRSP savings
             - If the chart has more green, you're prioritizing tax-free TFSA growth
@@ -1421,7 +1421,7 @@ st.markdown("""
             # Summary stats
             col_stats1, col_stats2, col_stats3 = st.columns(3)
             
-            st.markdown("#### 📊 Portfolio Performance Metrics")
+            st.markdown("#### ðŸ“Š Portfolio Performance Metrics")
             st.markdown("""
                 These metrics summarize your portfolio's performance across all tracked years:
                 - **Total Growth**: Dollar amount your portfolio has grown beyond contributions
@@ -1466,12 +1466,12 @@ st.markdown("""
         st.divider()
     
     # Planning Years Grid
-    st.markdown("### 📅 Planning Years")
+    st.markdown("### ðŸ“… Planning Years")
     
     description_box(
         "Year-by-Year Strategy Navigator",
-        "**Manage Your Planning Years:** Use ➕ Add to create new years for planning (starting from 2025 by default). "
-        "Use ❌ Remove to delete years you no longer need. Click any year tile to view and optimize that tax year. "
+        "**Manage Your Planning Years:** Use âž• Add to create new years for planning (starting from 2025 by default). "
+        "Use âŒ Remove to delete years you no longer need. Click any year tile to view and optimize that tax year. "
         "**Status Colors:** Light blue = not started (ready to plan), Orange = in progress (needs optimization), "
         "Green = optimized (tax efficient strategy complete)."
     )
@@ -1479,23 +1479,23 @@ st.markdown("""
     # Status Legend
     st.markdown("""
         <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 18px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-            <strong style="font-size: 1.05em;">📊 Status Guide:</strong>
+            <strong style="font-size: 1.05em;">ðŸ“Š Status Guide:</strong>
             <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 20px;">
                 <span style="padding: 8px 16px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 6px; border: 1px solid #bae6fd;">
-                    ⚪ <strong>Not Started</strong> - Ready for planning
+                    âšª <strong>Not Started</strong> - Ready for planning
                 </span>
                 <span style="padding: 8px 16px; background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); border-radius: 6px; border: 1px solid #f97316;">
-                    ⏳ <strong>In Progress</strong> - Needs optimization
+                    â³ <strong>In Progress</strong> - Needs optimization
                 </span>
                 <span style="padding: 8px 16px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-radius: 6px; border: 1px solid #10b981;">
-                    ✅ <strong>Optimized</strong> - Tax efficient
+                    âœ… <strong>Optimized</strong> - Tax efficient
                 </span>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
     # Add/Remove year functionality
-    st.markdown("#### ⚙️ Manage Planning Years")
+    st.markdown("#### âš™ï¸ Manage Planning Years")
     
     col_add1, col_add2, col_add3, col_add4 = st.columns([2, 1, 2, 1])
     
@@ -1511,7 +1511,7 @@ st.markdown("""
         )
     
     with col_add2:
-        add_button = st.button("➕ Add", use_container_width=True, type="primary")
+        add_button = st.button("âž• Add", use_container_width=True, type="primary")
         if add_button:
             if str(new_year_input) not in all_history:
                 save_year_data(new_year_input, {
@@ -1529,10 +1529,10 @@ st.markdown("""
                     "tfsa_balance_start": 0,
                     "target_cagr": 7.0
                 })
-                st.success(f"✓ {new_year_input} added successfully!")
+                st.success(f"âœ“ {new_year_input} added successfully!")
                 st.rerun()
             else:
-                st.error(f"❌ Year {new_year_input} already exists in your plan")
+                st.error(f"âŒ Year {new_year_input} already exists in your plan")
     
     with col_add3:
         if len(all_history) > 0:
@@ -1545,14 +1545,14 @@ st.markdown("""
             )
         else:
             delete_year_input = None
-            st.info("💡 No saved years to remove yet")
+            st.info("ðŸ’¡ No saved years to remove yet")
     
     with col_add4:
         if delete_year_input and len(all_history) > 0:
-            remove_button = st.button("❌ Remove", use_container_width=True)
+            remove_button = st.button("âŒ Remove", use_container_width=True)
             if remove_button:
                 if delete_year_data(delete_year_input):
-                    st.success(f"✓ {delete_year_input} removed successfully!")
+                    st.success(f"âœ“ {delete_year_input} removed successfully!")
                     st.rerun()
                 else:
                     st.error(f"Failed to remove {delete_year_input}")
@@ -1581,25 +1581,25 @@ st.markdown("""
                 # Determine status and styling
                 if not is_saved:
                     # Light Blue/Grey - Empty (professional, clean look)
-                    status_emoji = "⚪"
+                    status_emoji = "âšª"
                     status_text = "Not Started"
-                    button_label = f"📅 **{yr}**\n{status_emoji} {status_text}"
+                    button_label = f"ðŸ“… **{yr}**\n{status_emoji} {status_text}"
                     container_style = "background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #bae6fd; border-radius: 12px; padding: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
                 elif is_optimized:
                     # Green - Optimized
                     data = all_history[str(yr)]
                     annual_rrsp = calculate_annual_rrsp(data)
-                    status_emoji = "✅"
+                    status_emoji = "âœ…"
                     status_text = f"${annual_rrsp:,.0f}"
-                    button_label = f"📅 **{yr}**\n{status_text}\n{status_emoji} Optimized"
+                    button_label = f"ðŸ“… **{yr}**\n{status_text}\n{status_emoji} Optimized"
                     container_style = "background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #10b981; border-radius: 12px; padding: 4px; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);"
                 else:
                     # Orange - In Progress
                     data = all_history[str(yr)]
                     annual_rrsp = calculate_annual_rrsp(data)
-                    status_emoji = "⏳"
+                    status_emoji = "â³"
                     status_text = f"${annual_rrsp:,.0f}"
-                    button_label = f"📅 **{yr}**\n{status_text}\n{status_emoji} In Progress"
+                    button_label = f"ðŸ“… **{yr}**\n{status_text}\n{status_emoji} In Progress"
                     container_style = "background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); border: 2px solid #f97316; border-radius: 12px; padding: 4px; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2);"
                 
                 # Wrap button in styled container
@@ -1622,7 +1622,7 @@ st.markdown("""
     # Multi-Year Analytics
     if all_history and len(all_history) > 1:
         st.divider()
-        st.markdown("### 📈 Multi-Year Analytics & Trends")
+        st.markdown("### ðŸ“ˆ Multi-Year Analytics & Trends")
         
         description_box(
             "Comparative Analysis Dashboard",
@@ -1734,7 +1734,7 @@ st.markdown("""
             
             st.altair_chart(rrsp_chart, use_container_width=True)
             
-            st.markdown("**📖 Understanding This Chart:**")
+            st.markdown("**ðŸ“– Understanding This Chart:**")
             st.markdown("""
                 - **Green bars**: RRSP room you've used (contributions made)
                 - **Gray bars**: RRSP room left unused (missed opportunity)
@@ -1772,7 +1772,7 @@ st.markdown("""
             
             st.altair_chart(tfsa_chart, use_container_width=True)
             
-            st.markdown("**📖 Understanding This Chart:**")
+            st.markdown("**ðŸ“– Understanding This Chart:**")
             st.markdown("""
                 - **Blue bars**: TFSA room you've used (contributions made)
                 - **Gray bars**: TFSA room left unused (missed opportunity)
@@ -1821,7 +1821,7 @@ st.markdown("""
             
             st.altair_chart(income_chart, use_container_width=True)
             
-            st.markdown("**📖 Understanding This Chart:**")
+            st.markdown("**ðŸ“– Understanding This Chart:**")
             st.markdown("""
                 - **Gray bars**: Your total gross income (before RRSP deductions)
                 - **Blue bars**: Your taxable income (after RRSP deductions)
@@ -1896,14 +1896,14 @@ else:
     year_data = all_history.get(str(selected_year), {})
 
     with st.sidebar:
-        if st.button("⬅️ Back to Home", use_container_width=True):
+        if st.button("â¬…ï¸ Back to Home", use_container_width=True):
             st.session_state.current_page = "Home"
             st.rerun()
         
-        st.header(f"⚙️ {selected_year} Parameters")
+        st.header(f"âš™ï¸ {selected_year} Parameters")
         
         with st.form(key="input_form"):
-            st.markdown("### 💵 Income Parameters")
+            st.markdown("### ðŸ’µ Income Parameters")
             
             t4_gross_income = st.number_input(
                 "Annual T4 Gross Income",
@@ -1929,9 +1929,9 @@ else:
                 help="Core salary used for percentage-based contributions"
             )
             
-            st.caption(f"💰 Total Gross Income: ${t4_gross_income + other_income:,.0f}")
+            st.caption(f"ðŸ’° Total Gross Income: ${t4_gross_income + other_income:,.0f}")
             
-            st.markdown("### 🎯 RRSP Strategy")
+            st.markdown("### ðŸŽ¯ RRSP Strategy")
             
             biweekly_pct = st.slider(
                 "Biweekly RRSP Contribution (%)",
@@ -1953,15 +1953,15 @@ else:
             employee_contribution_pct = biweekly_pct
             employer_contribution_pct = min(employee_contribution_pct, employer_match_cap)
             
-            st.caption(f"💡 Your contribution: {employee_contribution_pct:.1f}% (${base_salary * employee_contribution_pct / 100:,.0f}) | "
+            st.caption(f"ðŸ’¡ Your contribution: {employee_contribution_pct:.1f}% (${base_salary * employee_contribution_pct / 100:,.0f}) | "
                       f"Employer matches: {employer_contribution_pct:.1f}% (${base_salary * employer_contribution_pct / 100:,.0f})")
             
             if employee_contribution_pct > employer_match_cap:
-                st.warning(f"⚠️ You're contributing {employee_contribution_pct:.1f}% but employer only matches up to {employer_match_cap:.1f}%. "
+                st.warning(f"âš ï¸ You're contributing {employee_contribution_pct:.1f}% but employer only matches up to {employer_match_cap:.1f}%. "
                           f"You're contributing ${base_salary * (employee_contribution_pct - employer_match_cap) / 100:,.0f} beyond the match.")
             elif employee_contribution_pct < employer_match_cap:
                 missed_match = base_salary * (employer_match_cap - employee_contribution_pct) / 100
-                st.info(f"💰 Opportunity: Increase contribution to {employer_match_cap:.1f}% to get ${missed_match:,.0f} more in free employer money!")
+                st.info(f"ðŸ’° Opportunity: Increase contribution to {employer_match_cap:.1f}% to get ${missed_match:,.0f} more in free employer money!")
             
             rrsp_lump_sum_optimization = st.number_input(
                 "RRSP Lump Sum (Tax Optimization)",
@@ -1979,9 +1979,9 @@ else:
                 help="Extra contributions to maximize tax refund beyond optimization"
             )
             
-            st.caption(f"💰 Total RRSP Lump Sum: ${rrsp_lump_sum_optimization + rrsp_lump_sum_additional:,.0f}")
+            st.caption(f"ðŸ’° Total RRSP Lump Sum: ${rrsp_lump_sum_optimization + rrsp_lump_sum_additional:,.0f}")
             
-            st.markdown("### 🌱 TFSA Strategy")
+            st.markdown("### ðŸŒ± TFSA Strategy")
             
             tfsa_lump_sum = st.number_input(
                 "TFSA Lump Sum Deposit",
@@ -1991,7 +1991,7 @@ else:
                 help="Tax-free savings account contribution"
             )
             
-            st.markdown("### 📋 CRA Contribution Limits")
+            st.markdown("### ðŸ“‹ CRA Contribution Limits")
             
             # Get default values from previous year if available
             prev_year = str(selected_year - 1)
@@ -2036,9 +2036,9 @@ else:
             )
             
             if prev_year in all_history and default_rrsp_room > 0:
-                st.caption(f"ℹ️ Auto-calculated from {prev_year} carryover + new room")
+                st.caption(f"â„¹ï¸ Auto-calculated from {prev_year} carryover + new room")
             
-            st.markdown("### 📈 Portfolio Tracking")
+            st.markdown("### ðŸ“ˆ Portfolio Tracking")
             
             # Calculate default values from previous year's end balances
             prev_year = str(selected_year - 1)
@@ -2082,7 +2082,7 @@ else:
             )
             
             if prev_year in all_history and default_rrsp_balance > 0:
-                st.caption(f"ℹ️ Auto-calculated from {prev_year} end-of-year projected balances")
+                st.caption(f"â„¹ï¸ Auto-calculated from {prev_year} end-of-year projected balances")
             
             target_cagr = st.slider(
                 "Target Annual Return (CAGR %)",
@@ -2092,7 +2092,7 @@ else:
                 help="Expected compound annual growth rate for investments (0-50%)"
             )
             
-            st.caption(f"📊 Using {target_cagr}% CAGR for growth projections")
+            st.caption(f"ðŸ“Š Using {target_cagr}% CAGR for growth projections")
             
             st.divider()
             
@@ -2101,14 +2101,14 @@ else:
             
             with col_save:
                 submitted = st.form_submit_button(
-                    "💾 Save",
+                    "ðŸ’¾ Save",
                     use_container_width=True,
                     type="primary"
                 )
             
             with col_reset:
                 reset = st.form_submit_button(
-                    "🔄 Reset",
+                    "ðŸ”„ Reset",
                     use_container_width=True
                 )
             
@@ -2138,7 +2138,7 @@ else:
                 st.rerun()
         
         if st.session_state.get("saved_flag"):
-            st.success("✓ Strategy saved successfully!")
+            st.success("âœ“ Strategy saved successfully!")
             st.session_state.saved_flag = False
     
     # Main content area - Calculations
