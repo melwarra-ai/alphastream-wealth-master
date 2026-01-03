@@ -532,10 +532,13 @@ with st.sidebar:
             st.markdown("""
             **Record new capital deployment** to track your investment journey.
             
-            - Each deployment buys assets at current market prices
+            - Each deployment buys assets at historical prices from the selected date
             - Purchase history enables accurate average cost calculation
             - Drift detection activates only after 100% deployment
             """)
+            
+            # Show current status
+            st.markdown(f"**Current Status:** {allocated_pct:.1f}% deployed, {remaining_pct:.1f}% remaining")
             
             if remaining_pct > 0:
                 deploy_pct = st.number_input(
@@ -554,21 +557,58 @@ with st.sidebar:
                 )
                 
                 if prof.get("assets"):
-                    st.caption("**Assets will be purchased at current market prices**")
+                    if deploy_date == date.today():
+                        st.caption("**Assets will be purchased at today's closing prices**")
+                    else:
+                        st.caption(f"**Assets will be purchased at {deploy_date} historical prices**")
                     
                     if st.button("📥 Record Deployment", type="primary", use_container_width=True):
-                        # Fetch current prices
+                        # Fetch historical prices for the deployment date
                         tickers = list(prof["assets"].keys())
                         try:
-                            with st.spinner("Fetching current prices..."):
+                            with st.spinner(f"Fetching prices for {deploy_date}..."):
                                 prices = {}
+                                deploy_datetime = pd.to_datetime(deploy_date)
+                                today = pd.to_datetime(date.today())
+                                
                                 for ticker in tickers:
                                     t_obj = yf.Ticker(ticker)
-                                    hist = t_obj.history(period="1d")
+                                    
+                                    # If deployment date is today, use current price
+                                    if deploy_datetime.date() == today.date():
+                                        hist = t_obj.history(period="1d")
+                                    else:
+                                        # Fetch historical data for the deployment date
+                                        # Add buffer to ensure we capture the date (handles weekends/holidays)
+                                        start_date = deploy_datetime - timedelta(days=7)
+                                        end_date = deploy_datetime + timedelta(days=1)
+                                        hist = t_obj.history(start=start_date, end=end_date)
+                                    
                                     if not hist.empty:
-                                        prices[ticker] = float(hist['Close'].iloc[-1])
+                                        # Convert index to dates for comparison
+                                        hist.index = pd.to_datetime(hist.index).date
+                                        
+                                        # Try to find exact date
+                                        if deploy_datetime.date() in hist.index:
+                                            prices[ticker] = float(hist.loc[deploy_datetime.date()]['Close'])
+                                        else:
+                                            # If exact date not available (weekend/holiday), use closest prior trading day
+                                            available_dates = [d for d in hist.index if d <= deploy_datetime.date()]
+                                            if available_dates:
+                                                closest_date = max(available_dates)
+                                                prices[ticker] = float(hist.loc[closest_date]['Close'])
+                                                if closest_date != deploy_datetime.date():
+                                                    st.caption(f"ℹ️ {ticker}: Using {closest_date} price (closest trading day)")
+                                            else:
+                                                st.error(f"No price data available for {ticker} on or before {deploy_date}")
+                                                prices = None
+                                                break
+                                    else:
+                                        st.error(f"Could not fetch data for {ticker}")
+                                        prices = None
+                                        break
                                 
-                                if len(prices) != len(tickers):
+                                if prices is None or len(prices) != len(tickers):
                                     st.error("Could not fetch prices for all assets")
                                 else:
                                     # Record purchases for each asset
@@ -601,6 +641,7 @@ with st.sidebar:
                                     log_profile(prof, f"Deployed {deploy_pct:.1f}% of capital (${deploy_amount:,.0f})")
                                     save_db(st.session_state.db)
                                     st.success(f"✅ Deployment recorded: {deploy_pct:.1f}%")
+                                    st.info(f"📊 Total portfolio deployment: {prof['allocated_pct']:.1f}%")
                                     st.rerun()
                         
                         except Exception as e:
@@ -894,7 +935,7 @@ if view_mode == "🏠 Global Dashboard":
                 if allocated_pct < 100:
                     st.markdown(f"""
                         <div style="background: #fef3c7; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px;">
-                            <strong>⚠️ Deployment:</strong> {allocated_pct:.0f}% / 100%
+                            <strong>⚠️ Deployment:</strong> {allocated_pct:.1f}% / 100%
                         </div>
                     """, unsafe_allow_html=True)
                 
@@ -993,7 +1034,7 @@ else:  # Portfolio Manager
     with col_sum4:
         # ASSET ALLOCATION: Modified status display
         if not is_fully_allocated:
-            st.metric("Status", f"🟠 {allocated_pct:.0f}%", delta="Deploying", delta_color="off")
+            st.metric("Deployment", f"{allocated_pct:.1f}%", delta="In Progress", delta_color="off")
         elif has_rebalanced:
             if recently_rebalanced:
                 st.metric("Status", "✅ Balanced", delta="Optimized", delta_color="normal")
