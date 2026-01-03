@@ -380,7 +380,35 @@ if st.session_state.current_page == "Home":
         
         # Get projected balances from latest year
         if latest_data:
-            target_cagr = year_data.get("target_cagr", 7.0) / 100  # Convert to decimal
+            target_cagr = latest_data.get("target_cagr", 7.0) / 100  # Convert to decimal
+            
+            # Define variables for portfolio calculations (fixing NameError)
+            rrsp_balance_start = latest_data.get("rrsp_balance_start", 0)
+            tfsa_balance_start = latest_data.get("tfsa_balance_start", 0)
+            base_salary = latest_data.get('base_salary', 0)
+            biweekly_pct = latest_data.get('biweekly_pct', 0)
+            employer_match_cap = latest_data.get('employer_match', 0)
+            
+            employee_rrsp_contribution = base_salary * (biweekly_pct / 100)
+            employer_rrsp_contribution = base_salary * (min(biweekly_pct, employer_match_cap) / 100)
+            annual_rrsp_periodic = employee_rrsp_contribution + employer_rrsp_contribution
+            
+            rrsp_lump_sum_optimization = latest_data.get('rrsp_lump_sum_optimization', 0)
+            rrsp_lump_sum_additional = latest_data.get('rrsp_lump_sum_additional', 0)
+            rrsp_lump_sum = rrsp_lump_sum_optimization + rrsp_lump_sum_additional
+            total_rrsp_contributions = annual_rrsp_periodic + rrsp_lump_sum
+            
+            tfsa_lump_sum = latest_data.get('tfsa_lump_sum', 0)
+            
+            t4_gross = latest_data.get('t4_gross_income', 0)
+            other_income = latest_data.get('other_income', 0)
+            total_gross_income = t4_gross + other_income
+            taxable_income = max(0, total_gross_income - total_rrsp_contributions)
+            
+            rrsp_room = latest_data.get('rrsp_room', 0)
+            tfsa_room = latest_data.get('tfsa_room', 0)
+            remaining_rrsp_room = max(0, rrsp_room - total_rrsp_contributions)
+            remaining_tfsa_room = max(0, tfsa_room - tfsa_lump_sum)
     
     # Calculate end of year balances (growth + new contributions)
     # Assuming contributions happen throughout the year, use half-year growth on new money
@@ -1206,35 +1234,35 @@ if st.session_state.current_page == "Home":
             delta=f"+{target_cagr*100:.1f}% target",
             help="Combined RRSP + TFSA projected end-of-year value"
         )
-    #         else:  # FIXME: Corrupted code section - needs manual review
-    #             st.markdown("""  # FIXME: Corrupted code section - needs manual review
-    #                 <div style="background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);   # FIXME: Corrupted code section - needs manual review
-    #                      padding: 20px; border-radius: 12px; border: 2px solid #f97316; text-align: center;">  # FIXME: Corrupted code section - needs manual review
-    #                     <div style="font-size: 3em;">ðŸŸ </div>  # FIXME: Corrupted code section - needs manual review
-    #                     <div style="font-size: 1.2em; font-weight: 600; color: #7c2d12; margin-top: 10px;">  # FIXME: Corrupted code section - needs manual review
-    #                         IN PROGRESS  # FIXME: Corrupted code section - needs manual review
-    #                     </div>  # FIXME: Corrupted code section - needs manual review
-    #                     <div style="font-size: 0.9em; color: #9a3412; margin-top: 5px;">  # FIXME: Corrupted code section - needs manual review
-    #                         More RRSP needed  # FIXME: Corrupted code section - needs manual review
-    #                     </div>  # FIXME: Corrupted code section - needs manual review
-    #                 </div>  # FIXME: Corrupted code section - needs manual review
-    #             """, unsafe_allow_html=True) = latest_data.get("target_cagr", 7.0) / 100  # FIXME: Corrupted code section - needs manual review
-    #             rrsp_start = latest_data.get("rrsp_balance_start", 0)  # FIXME: Corrupted code section - needs manual review
-    #             tfsa_start = latest_data.get("tfsa_balance_start", 0)  # FIXME: Corrupted code section - needs manual review
-    #               # FIXME: Corrupted code section - needs manual review
-    #             annual_rrsp = (latest_data.get('base_salary', 0) *   # FIXME: Corrupted code section - needs manual review
-    #                           (latest_data.get('biweekly_pct', 0) + latest_data.get('employer_match', 0)) / 100) + \  # FIXME: Corrupted code section - needs manual review
-    #                           latest_data.get('rrsp_lump_sum_optimization', 0) + \  # FIXME: Corrupted code section - needs manual review
-    #                           latest_data.get('rrsp_lump_sum_additional', 0) + \  # FIXME: Corrupted code section - needs manual review
-    #                           latest_data.get('rrsp_lump_sum', 0)  # FIXME: Corrupted code section - needs manual review
-    #             tfsa_contrib = latest_data.get('tfsa_lump_sum', 0)  # FIXME: Corrupted code section - needs manual review
-    #               # FIXME: Corrupted code section - needs manual review
-    #             rrsp_growth = rrsp_start * target_cagr + annual_rrsp * (target_cagr / 2)  # FIXME: Corrupted code section - needs manual review
-    #             tfsa_growth = tfsa_start * target_cagr + tfsa_contrib * (target_cagr / 2)  # FIXME: Corrupted code section - needs manual review
-    #               # FIXME: Corrupted code section - needs manual review
-    #             latest_rrsp_balance = rrsp_start + rrsp_growth + annual_rrsp  # FIXME: Corrupted code section - needs manual review
-    #             latest_tfsa_balance = tfsa_start + tfsa_growth + tfsa_contrib  # FIXME: Corrupted code section - needs manual review
-    #           # FIXME: Corrupted code section - needs manual review
+    # FIXME:         else:
+    # FIXME:             st.markdown("""
+    # FIXME:                 <div style="background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); 
+    # FIXME:                      padding: 20px; border-radius: 12px; border: 2px solid #f97316; text-align: center;">
+    # FIXME:                     <div style="font-size: 3em;">ðŸŸ </div>
+    # FIXME:                     <div style="font-size: 1.2em; font-weight: 600; color: #7c2d12; margin-top: 10px;">
+    # FIXME:                         IN PROGRESS
+    # FIXME:                     </div>
+    # FIXME:                     <div style="font-size: 0.9em; color: #9a3412; margin-top: 5px;">
+    # FIXME:                         More RRSP needed
+    # FIXME:                     </div>
+    # FIXME:                 </div>
+    # FIXME:             """, unsafe_allow_html=True) = latest_data.get("target_cagr", 7.0) / 100
+    # FIXME:             rrsp_start = latest_data.get("rrsp_balance_start", 0)
+    # FIXME:             tfsa_start = latest_data.get("tfsa_balance_start", 0)
+    # FIXME:             
+    # FIXME:             annual_rrsp = (latest_data.get('base_salary', 0) * 
+    # FIXME:                           (latest_data.get('biweekly_pct', 0) + latest_data.get('employer_match', 0)) / 100) + \
+    # FIXME:                           latest_data.get('rrsp_lump_sum_optimization', 0) + \
+    # FIXME:                           latest_data.get('rrsp_lump_sum_additional', 0) + \
+    # FIXME:                           latest_data.get('rrsp_lump_sum', 0)
+    # FIXME:             tfsa_contrib = latest_data.get('tfsa_lump_sum', 0)
+    # FIXME:             
+    # FIXME:             rrsp_growth = rrsp_start * target_cagr + annual_rrsp * (target_cagr / 2)
+    # FIXME:             tfsa_growth = tfsa_start * target_cagr + tfsa_contrib * (target_cagr / 2)
+    # FIXME:             
+    # FIXME:             latest_rrsp_balance = rrsp_start + rrsp_growth + annual_rrsp
+    # FIXME:             latest_tfsa_balance = tfsa_start + tfsa_growth + tfsa_contrib
+    # FIXME:         
         col1, col2, col3, col4 = st.columns(4)
         
         latest_year = max(all_history.keys(), key=lambda x: int(x))
